@@ -56,6 +56,9 @@
     <Reference Include="NetTopologySuite.IO.ShapeFile.Extended, Version=1.15.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\NetTopologySuite.IO.ShapeFile.1.15.2\lib\net45\NetTopologySuite.IO.ShapeFile.Extended.dll</HintPath>
     </Reference>
+    <Reference Include="Priority Queue, Version=4.1.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OptimizedPriorityQueue.4.1.1\lib\net45\Priority Queue.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Text.Encoding.CodePages, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">

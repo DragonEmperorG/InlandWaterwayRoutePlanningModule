@@ -8,6 +8,7 @@ using GeoAPI.Geometries;
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
+using Priority_Queue;
 
 /// <summary>
 /// 最优航线规划模型原型程序
@@ -160,14 +161,28 @@ namespace IWRPM
         }
     }
 
+    class WaterwayNeighbor
+    {
+        public string nextWaterwayNodeID;
+        public string toNextWaterwayNodeLinkID;
+        public double toNextWaterwayNodeCost;
+
+        public WaterwayNeighbor(string _nextWaterwayNodeID, string _toNextWaterwayNodeLinkID, double _toNextWaterwayNodeCost)
+        {
+            this.nextWaterwayNodeID = _nextWaterwayNodeID;
+            this.toNextWaterwayNodeLinkID = _toNextWaterwayNodeLinkID;
+            this.toNextWaterwayNodeCost = _toNextWaterwayNodeCost;
+        }
+    }
+
     class WaterwayGraph
     {
         string _shpfileDatasetsPath = @"D:\GuangDongENCProject\Datasets\WaterwayNetworkDatasets";
 
         #region WaterwayGraph Members
 
-        Dictionary<string, WaterwayTopoNode> m_dicWaterwayNode = new Dictionary<string, WaterwayTopoNode>();
-        Dictionary<string, WaterwayTopoLink> m_dicWaterwayLink = new Dictionary<string, WaterwayTopoLink>();
+        public Dictionary<string, WaterwayTopoNode> m_dicWaterwayNode = new Dictionary<string, WaterwayTopoNode>();
+        public Dictionary<string, WaterwayTopoLink> m_dicWaterwayLink = new Dictionary<string, WaterwayTopoLink>();
 
         #endregion
 
@@ -189,10 +204,10 @@ namespace IWRPM
 
             long _countNumRecordWaterwayNodeDatasets = 0;
 
-            WaterwayTopoNode waterwayTopoNodeTemp = new WaterwayTopoNode();
-
             while (_readerWaterwayNodeDatasets.Read())
             {
+                WaterwayTopoNode waterwayTopoNodeTemp = new WaterwayTopoNode();
+
                 for (int i = 0; i < _headerWaterwayNodeDatasets.NumFields; i++)
                 {
                     switch (_headerWaterwayNodeDatasets.Fields[i].Name)
@@ -257,11 +272,11 @@ namespace IWRPM
             long _numRecordsWaterwayLinkDatasets = _headerWaterwayLinkDatasets.NumRecords;
 
             long _countNumRecordWaterwayLinkDatasets = 0;
-
-            WaterwayTopoLink waterwayTopoLinkTemp = new WaterwayTopoLink();
-
+ 
             while (_readerWaterwayLinkDatasets.Read())
             {
+                WaterwayTopoLink waterwayTopoLinkTemp = new WaterwayTopoLink();
+
                 for (int i = 0; i < _headerWaterwayLinkDatasets.NumFields; i++)
                 {
                     switch (_headerWaterwayLinkDatasets.Fields[i].Name)
@@ -390,6 +405,18 @@ namespace IWRPM
             return _dicWaterwayLink;
         }
 
+        public IEnumerable<WaterwayNeighbor> Neighbors(string currentWaterwayNodeID)
+        {
+            string[] currentWaterwayLinkOutIDLists = m_dicWaterwayNode[currentWaterwayNodeID].waterLinkOutList;
+            foreach (var currentWaterwayLinkOutID in currentWaterwayLinkOutIDLists)
+            {
+                string currentWaterwayLinkOutUpStreamWaterNodeID = m_dicWaterwayLink[currentWaterwayLinkOutID].upStreamWaterNodeID;
+                string nextWaterwayNodeID = currentWaterwayNodeID != currentWaterwayLinkOutUpStreamWaterNodeID ? currentWaterwayLinkOutUpStreamWaterNodeID : m_dicWaterwayLink[currentWaterwayLinkOutID].downStreamWaterNodeID;
+                WaterwayNeighbor nextWaterwayNeighbor = new WaterwayNeighbor(nextWaterwayNodeID, currentWaterwayLinkOutID, m_dicWaterwayLink[currentWaterwayLinkOutID].channelLength);
+                yield return nextWaterwayNeighbor;
+            }
+        }
+
         public void LoadWaterwayNetworkDatasets()
         {
             m_dicWaterwayNode = LoadWaterwayNodeDatasets(Path.Combine(_shpfileDatasetsPath, "WaterwayNode.shp"));
@@ -401,17 +428,84 @@ namespace IWRPM
 
     class ChannelRoutePlanner
     {
+        public Dictionary<string, string[]> cameFrom = new Dictionary<string, string[]>();
+        public Dictionary<string, double> costSoFar = new Dictionary<string, double>();
+
+        // Note: a generic version of A* would abstract over Location and
+        // also Heuristic
+        static public double Heuristic(WaterwayTopoNode a, WaterwayTopoNode b)
+        {
+            return Math.Abs(a.waterNodeCoordinate[0] - b.waterNodeCoordinate[0]) + Math.Abs(a.waterNodeCoordinate[1] - b.waterNodeCoordinate[1]);
+        }
+
+        public ChannelRoutePlanner(WaterwayGraph graph, string start, string goal)
+        {
+            SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
+            frontier.Enqueue(start, 0.0);
+
+            cameFrom.Add(start, new string[] { start, "START" });
+            costSoFar[start] = 0.0;
+
+            while (frontier.Count > 0)
+            {
+                var current = frontier.Dequeue();
+
+                if (current.Equals(goal))
+                {
+                    break;
+                }
+
+                foreach (var next in graph.Neighbors(current))
+                {
+                    double newCost = costSoFar[current] + next.toNextWaterwayNodeCost;
+                    if (!costSoFar.ContainsKey(next.nextWaterwayNodeID) || newCost < costSoFar[next.nextWaterwayNodeID])
+                    {
+                        costSoFar[next.nextWaterwayNodeID] = newCost;
+                        double priority = newCost + Heuristic(graph.m_dicWaterwayNode[next.nextWaterwayNodeID], graph.m_dicWaterwayNode[goal]);
+                        frontier.Enqueue(next.nextWaterwayNodeID, priority);
+                        cameFrom[next.nextWaterwayNodeID] = new string[2] { current, next.toNextWaterwayNodeLinkID };
+                    }
+                }
+            }
+
+
+        }
 
     }
 
     class Program
     {
+        static void OutputRouteResults(WaterwayGraph waterwayGraph, ChannelRoutePlanner channelRoutePlanner, string start, string goal)
+        {
+            Stack<string> routeResultsStack = new Stack<string>();
+
+            var currentResearchElement = goal;
+            do
+            {
+                routeResultsStack.Push(currentResearchElement);
+                routeResultsStack.Push(channelRoutePlanner.cameFrom[currentResearchElement][1]);
+                currentResearchElement = channelRoutePlanner.cameFrom[currentResearchElement][0];
+            }
+            while (currentResearchElement != start);
+            routeResultsStack.Push(currentResearchElement);
+
+            int routeResultsStackCount = routeResultsStack.Count;
+            for (var i = 0; i < routeResultsStackCount; i++)
+            {
+                string currentRouteResult = routeResultsStack.Pop();
+                Console.WriteLine(currentRouteResult);
+            }
+        }
+
         static void Main(string[] args)
         {
             var guangDongWaterwayGraph = new WaterwayGraph();
             guangDongWaterwayGraph.LoadWaterwayNetworkDatasets();
 
-
+            var startWaterwayNode = "XJ3JKZ-0001";
+            var goalWaterwayNode = "BJ1-9001";
+            var guangDongChannelRoutePlanner = new ChannelRoutePlanner(guangDongWaterwayGraph, startWaterwayNode, goalWaterwayNode);
+            OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, startWaterwayNode, goalWaterwayNode);
 
             Console.ReadLine();  
         }
