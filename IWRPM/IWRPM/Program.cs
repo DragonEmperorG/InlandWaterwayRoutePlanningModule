@@ -473,6 +473,16 @@ namespace IWRPM
 
     }
 
+    class AStarSearch
+    {
+        // TODO
+    }
+
+    class BreadthFirstSearch
+    {
+        // TODO
+    }
+
     class Program
     {
         static void OutputRouteResults(WaterwayGraph waterwayGraph, ChannelRoutePlanner channelRoutePlanner, string start, string goal)
