@@ -16,6 +16,41 @@ using Priority_Queue;
 /// </summary>
 namespace IWRPM
 {
+    class InlandWaterwayVehicle
+    {
+        public string vehicleID;
+        public float deadWeightTonnage;
+        public float lengthOverall;
+        public float mouldedBreadth;
+        public float mouldedDepth;
+        public float loadedDraft;
+        public float freeboardHeight;
+
+        public InlandWaterwayVehicle()
+        {
+        }
+
+        public InlandWaterwayVehicle(
+            string _vehicleID,
+            float _deadWeightTonnage,
+            float _lengthOverall,
+            float _mouldedBreadth,
+            float _mouldedDepth,
+            float _loadedDraft,
+            float _freeboardHeight
+        )
+        {
+            this.vehicleID = _vehicleID;
+            this.deadWeightTonnage = _deadWeightTonnage;
+            this.lengthOverall = _lengthOverall;
+            this.mouldedBreadth = _mouldedBreadth;
+            this.mouldedDepth = _mouldedDepth;
+            this.loadedDraft = _loadedDraft;
+            this.freeboardHeight = _freeboardHeight;
+        }
+    }
+
+
     /// <summary>
     /// WaterwayTopoNode 航道拓扑点用于保存航道网络拓扑点数据
     /// </summary>
@@ -161,6 +196,10 @@ namespace IWRPM
         }
     }
 
+
+    /// <summary>
+    /// WaterwayNeighbor 航线规划路径邻接对象
+    /// </summary>
     class WaterwayNeighbor
     {
         public string nextWaterwayNodeID;
@@ -405,11 +444,36 @@ namespace IWRPM
             return _dicWaterwayLink;
         }
 
-        public IEnumerable<WaterwayNeighbor> Neighbors(string currentWaterwayNodeID)
+        bool EstimatePassingThroughChannel(string passingThroughWaterwayLinkID, InlandWaterwayVehicle passingThroughVehicle)
+        {
+            bool IsPassingThroughChannel = true;
+            var passingThroughWaterwayLink = m_dicWaterwayLink[passingThroughWaterwayLinkID];
+
+            if (passingThroughWaterwayLink.channelDepth < passingThroughVehicle.loadedDraft)
+                IsPassingThroughChannel = false;
+
+            if (passingThroughWaterwayLink.channelWidth < passingThroughVehicle.mouldedBreadth)
+                IsPassingThroughChannel = false;
+
+            if (passingThroughWaterwayLink.bridgeNumber != 0)
+                if (passingThroughWaterwayLink.verticalClearanceHeight < passingThroughVehicle.freeboardHeight || passingThroughWaterwayLink.horizontalClearanceWidth < passingThroughVehicle.mouldedBreadth)
+                    IsPassingThroughChannel = false;
+
+            return IsPassingThroughChannel;
+        }
+
+        /// <summary>
+        /// Get WaterwayNeighborNodeIDs
+        /// </summary>
+        /// <param name="currentWaterwayNodeID"></param>
+        /// <returns></returns>
+        public IEnumerable<WaterwayNeighbor> Neighbors(string currentWaterwayNodeID, InlandWaterwayVehicle currentVehicle)
         {
             string[] currentWaterwayLinkOutIDLists = m_dicWaterwayNode[currentWaterwayNodeID].waterLinkOutList;
             foreach (var currentWaterwayLinkOutID in currentWaterwayLinkOutIDLists)
             {
+                if (!EstimatePassingThroughChannel(currentWaterwayLinkOutID, currentVehicle))
+                    continue;
                 string currentWaterwayLinkOutUpStreamWaterNodeID = m_dicWaterwayLink[currentWaterwayLinkOutID].upStreamWaterNodeID;
                 string nextWaterwayNodeID = currentWaterwayNodeID != currentWaterwayLinkOutUpStreamWaterNodeID ? currentWaterwayLinkOutUpStreamWaterNodeID : m_dicWaterwayLink[currentWaterwayLinkOutID].downStreamWaterNodeID;
                 WaterwayNeighbor nextWaterwayNeighbor = new WaterwayNeighbor(nextWaterwayNodeID, currentWaterwayLinkOutID, m_dicWaterwayLink[currentWaterwayLinkOutID].channelLength);
@@ -417,6 +481,9 @@ namespace IWRPM
             }
         }
 
+        /// <summary>
+        /// Load WaterwayNetwork Datasets
+        /// </summary>
         public void LoadWaterwayNetworkDatasets()
         {
             m_dicWaterwayNode = LoadWaterwayNodeDatasets(Path.Combine(_shpfileDatasetsPath, "WaterwayNode.shp"));
@@ -426,10 +493,16 @@ namespace IWRPM
         }
     }
 
+
+    /// <summary>
+    /// 最优航线规划类
+    /// </summary>
     class ChannelRoutePlanner
     {
+        public bool isFindOptimalRoute = false;
+
         public Dictionary<string, string[]> cameFrom = new Dictionary<string, string[]>();
-        public Dictionary<string, double> costSoFar = new Dictionary<string, double>();
+        public Dictionary<string, double> costSoFar = new Dictionary<string, double>();        
 
         // Note: a generic version of A* would abstract over Location and
         // also Heuristic
@@ -438,7 +511,7 @@ namespace IWRPM
             return Math.Abs(a.waterNodeCoordinate[0] - b.waterNodeCoordinate[0]) + Math.Abs(a.waterNodeCoordinate[1] - b.waterNodeCoordinate[1]);
         }
 
-        public ChannelRoutePlanner(WaterwayGraph graph, string start, string goal)
+        public ChannelRoutePlanner(WaterwayGraph graph, InlandWaterwayVehicle vehicle, string start, string goal)
         {
             SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
             frontier.Enqueue(start, 0.0);
@@ -452,10 +525,11 @@ namespace IWRPM
 
                 if (current.Equals(goal))
                 {
+                    isFindOptimalRoute = true;
                     break;
                 }
 
-                foreach (var next in graph.Neighbors(current))
+                foreach (var next in graph.Neighbors(current, vehicle))
                 {
                     double newCost = costSoFar[current] + next.toNextWaterwayNodeCost;
                     if (!costSoFar.ContainsKey(next.nextWaterwayNodeID) || newCost < costSoFar[next.nextWaterwayNodeID])
@@ -467,8 +541,6 @@ namespace IWRPM
                     }
                 }
             }
-
-
         }
 
     }
@@ -487,24 +559,32 @@ namespace IWRPM
     {
         static void OutputRouteResults(WaterwayGraph waterwayGraph, ChannelRoutePlanner channelRoutePlanner, string start, string goal)
         {
-            Stack<string> routeResultsStack = new Stack<string>();
-
-            var currentResearchElement = goal;
-            do
+            if (channelRoutePlanner.isFindOptimalRoute)
             {
+                Stack<string> routeResultsStack = new Stack<string>();
+
+                var currentResearchElement = goal;
+                do
+                {
+                    routeResultsStack.Push(currentResearchElement);
+                    routeResultsStack.Push(channelRoutePlanner.cameFrom[currentResearchElement][1]);
+                    currentResearchElement = channelRoutePlanner.cameFrom[currentResearchElement][0];
+                }
+                while (currentResearchElement != start);
                 routeResultsStack.Push(currentResearchElement);
-                routeResultsStack.Push(channelRoutePlanner.cameFrom[currentResearchElement][1]);
-                currentResearchElement = channelRoutePlanner.cameFrom[currentResearchElement][0];
-            }
-            while (currentResearchElement != start);
-            routeResultsStack.Push(currentResearchElement);
 
-            int routeResultsStackCount = routeResultsStack.Count;
-            for (var i = 0; i < routeResultsStackCount; i++)
-            {
-                string currentRouteResult = routeResultsStack.Pop();
-                Console.WriteLine(currentRouteResult);
+                int routeResultsStackCount = routeResultsStack.Count;
+                for (var i = 0; i < routeResultsStackCount; i++)
+                {
+                    string currentRouteResult = routeResultsStack.Pop();
+                    Console.WriteLine(currentRouteResult);
+                }
             }
+            else
+            {
+                Console.WriteLine("Can not reach the destination ...");
+            }
+            
         }
 
         static void Main(string[] args)
@@ -512,9 +592,11 @@ namespace IWRPM
             var guangDongWaterwayGraph = new WaterwayGraph();
             guangDongWaterwayGraph.LoadWaterwayNetworkDatasets();
 
+            var testBulkCarrier = new InlandWaterwayVehicle("FreedomWhuSGG", 300000f, 339f, 58.0f, 30.0f, 23.0f, 10.0f);
+            var testPassenger = new InlandWaterwayVehicle("Passenger", 0f, 0f, 0.0f, 0.0f, 0.0f, 0.0f);
             var startWaterwayNode = "XJ3JKZ-0001";
             var goalWaterwayNode = "BJ1-9001";
-            var guangDongChannelRoutePlanner = new ChannelRoutePlanner(guangDongWaterwayGraph, startWaterwayNode, goalWaterwayNode);
+            var guangDongChannelRoutePlanner = new ChannelRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNode, goalWaterwayNode);
             OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, startWaterwayNode, goalWaterwayNode);
 
             Console.ReadLine();  
