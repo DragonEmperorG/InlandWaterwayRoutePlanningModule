@@ -18,6 +18,7 @@ namespace IWRPM
     {
         public static readonly double EARTH_RADIUS = 6371004.0;
         public static readonly double Latitude_RADIUS = 11100.0;
+        public static readonly double epsilon = 0.000001;
 
         public bool isFindOptimalRoute = false;
 
@@ -58,6 +59,17 @@ namespace IWRPM
             return heuristic;
         }
 
+        public double GreatCircleDistance(WaterwayTopoNode _start, WaterwayTopoNode _goal, WaterwayTopoNode _current)
+        {
+            var _currentCoordinate = _current.waterNodeCoordinate;
+            var _goalCoordinate = _goal.waterNodeCoordinate;
+            var _cosC = Math.Cos(Rad(90.0 - _goalCoordinate[1])) * Math.Cos(Rad(90.0 - _currentCoordinate[1])) + Math.Sin(Rad(90.0 - _goalCoordinate[1])) * Math.Sin(Rad(90.0 - _currentCoordinate[1])) * Math.Cos(Rad(_goalCoordinate[0]) - Rad(_currentCoordinate[0]));
+            var _cRad = Math.Acos(_cosC);
+            var distance = EARTH_RADIUS * _cRad;
+
+            return distance;
+        }        
+
         public double Cost(double originalCost)
         {
             double aplha = 1.0;
@@ -82,13 +94,13 @@ namespace IWRPM
             }
         }
 
-        public class ShapeLinkWithDistance
+        public class ShapeLinkWithShortestDistance
         {
             public string affiliatedTopoLinkID;
             public ShapeNodeWithIndex[] shapeNodeWithIndex;
             public double distanceToPoint;
 
-            public ShapeLinkWithDistance(string _affiliatedTopoLinkID, ShapeNodeWithIndex[] _shapeNodeWithIndex, double _distanceToPoint)
+            public ShapeLinkWithShortestDistance(string _affiliatedTopoLinkID, ShapeNodeWithIndex[] _shapeNodeWithIndex, double _distanceToPoint)
             {
                 this.affiliatedTopoLinkID = _affiliatedTopoLinkID;
                 this.shapeNodeWithIndex = _shapeNodeWithIndex;
@@ -96,7 +108,23 @@ namespace IWRPM
             }
         }
 
-        double DistanceToShapeLink(double[] _point, ShapeNodeWithIndex[] _link)
+        static bool IsSameCoordinate(double[] _traceCoordinate, double[] _comparedCoordinate)
+        {
+            bool isSameCoordinate = false;
+            double diffrence = Math.Abs((_traceCoordinate[0] - _comparedCoordinate[0]) + (_traceCoordinate[1] - _comparedCoordinate[1]));
+            if (diffrence < epsilon)
+                isSameCoordinate = true;
+
+            return isSameCoordinate;
+        }
+
+        /// <summary>
+        /// 求解输入坐标点距离形状线的距离
+        /// </summary>
+        /// <param name="_point"></param>
+        /// <param name="_link"></param>
+        /// <returns></returns>
+        double ShortestDistanceToShapeLink(double[] _point, ShapeNodeWithIndex[] _link)
         {
             var from = _link[0].coordinate;
             var to = _link[1].coordinate;
@@ -104,8 +132,69 @@ namespace IWRPM
             var A = k;
             var B = -1;
             var C = from[1] - k * from[0];
-            var distance = Math.Abs(A * _point[0] + B * _point[1] + C) / Math.Sqrt(Math.Pow(A, 2) + Math.Pow(B, 2));
-            return distance;
+            var verticalDistance = Math.Abs(A * _point[0] + B * _point[1] + C) / Math.Sqrt(Math.Pow(A, 2) + Math.Pow(B, 2));
+            var from2pointDistance = Math.Sqrt(Math.Pow(from[0] - _point[0], 2) + Math.Pow(from[1] - _point[1], 2));
+            var to2pointDistance = Math.Sqrt(Math.Pow(to[0] - _point[0], 2) + Math.Pow(to[1] - _point[1], 2));
+            var shortestEndpointDistance = (from2pointDistance > to2pointDistance) ? to2pointDistance : from2pointDistance;
+            var shortestDistance = (shortestEndpointDistance > verticalDistance) ? verticalDistance : shortestEndpointDistance;
+
+            return shortestDistance;
+        }
+
+        double[] ShortestInsertedPointToShapeLink(double[] _point, ShapeNodeWithIndex[] _link)
+        {
+            var shortestInsertedPointCoordinate = new double[2];
+            var verticalInsertedPointCoordinate = new double[2];
+            var from = _link[0].coordinate;
+            var to = _link[1].coordinate;
+            var k = (from[1] - to[1]) / (from[0] - to[0]);
+
+            if (k == 0)
+            {
+                verticalInsertedPointCoordinate[0] = _point[0];
+                verticalInsertedPointCoordinate[1] = from[1];
+            }
+            else if (double.IsInfinity(k))
+            {
+                verticalInsertedPointCoordinate[0] = from[0];
+                verticalInsertedPointCoordinate[1] = _point[1];
+            }
+            else
+            {
+                var A1 = k;
+                var B1 = -1;
+                var C1 = from[1] - k * from[0];
+                var A2 = B1 / A1;
+                var B2 = -1;
+                var C2 = _point[1] - k * _point[0];
+                var x = (B1 * C2 - C1 * B2) / (A1 * B2 - A2 * B1);
+                var y = (A1 * C2 - A2 * C1) / (B1 * A2 - B2 * A1);
+                verticalInsertedPointCoordinate[0] = x;
+                verticalInsertedPointCoordinate[1] = y;
+            }
+
+            var vertical2pointDistance = Math.Sqrt(Math.Pow(verticalInsertedPointCoordinate[0] - _point[0], 2) + Math.Pow(verticalInsertedPointCoordinate[1] - _point[1], 2));
+            var from2pointDistance = Math.Sqrt(Math.Pow(from[0] - _point[0], 2) + Math.Pow(from[1] - _point[1], 2));
+            var to2pointDistance = Math.Sqrt(Math.Pow(to[0] - _point[0], 2) + Math.Pow(to[1] - _point[1], 2));
+
+            if (from2pointDistance > to2pointDistance)
+            {
+                shortestInsertedPointCoordinate = to;
+                if (to2pointDistance > vertical2pointDistance)
+                {
+                    shortestInsertedPointCoordinate = verticalInsertedPointCoordinate;
+                }
+            }
+            else
+            {
+                shortestInsertedPointCoordinate = from;
+                if (from2pointDistance > vertical2pointDistance)
+                {
+                    shortestInsertedPointCoordinate = verticalInsertedPointCoordinate;
+                }
+            }
+
+            return shortestInsertedPointCoordinate;
         }
 
         double[] VerticalInsertedPointToShapeLink(double[] _point, ShapeNodeWithIndex[] _link)
@@ -142,7 +231,7 @@ namespace IWRPM
             return verticalInsertedPointCoordinate;
         }
 
-        private static int ShapeLinkWithDistanceCompare(ShapeLinkWithDistance _ShapeLinkWithDistance1, ShapeLinkWithDistance _ShapeLinkWithDistance2)
+        private static int ShapeLinkWithDistanceCompare(ShapeLinkWithShortestDistance _ShapeLinkWithDistance1, ShapeLinkWithShortestDistance _ShapeLinkWithDistance2)
         {
             int res = 0;
             if ((_ShapeLinkWithDistance1 == null) && (_ShapeLinkWithDistance2 == null))
@@ -171,10 +260,10 @@ namespace IWRPM
         public string InsertStartTopoFeatures(string _startWaterwayNodeID, double[] startCoordinate)
         {
             var availableWaterwayLinkList = waterwayRoutePlannerGraph.Neighbors(_startWaterwayNodeID);
-            var candidateShapeLink = new List<ShapeLinkWithDistance>();
+            var candidateShapeLink = new List<ShapeLinkWithShortestDistance>();
             foreach (var currentAvailableWaterwayLink in availableWaterwayLinkList)
             {
-                var currentCandidateShapeLink = new List<ShapeLinkWithDistance>();
+                var currentCandidateShapeLink = new List<ShapeLinkWithShortestDistance>();
                 var currentAvailablecandidateShapeLNodeList = new List<ShapeNodeWithIndex>();
                 var currentAvailableWaterwayLinkCoordinates = waterwayRoutePlannerGraph.m_dicWaterwayLink[currentAvailableWaterwayLink].channelGeometry;
                 var currentAvailableWaterwayLinkCoordinatesLength = currentAvailableWaterwayLinkCoordinates.Length;
@@ -188,19 +277,19 @@ namespace IWRPM
                 if (nearestShapeNode[0].index == 0)
                 {
                     var shapeLinkTemp = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[0], currentAvailablecandidateShapeLNodeList[1] };
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTemp, DistanceToShapeLink(startCoordinate, shapeLinkTemp)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTemp, ShortestDistanceToShapeLink(startCoordinate, shapeLinkTemp)));
                 }
                 else if (nearestShapeNode[0].index == (currentAvailableWaterwayLinkCoordinatesLength - 1))
                 {
                     var shapeLinkTemp = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[currentAvailableWaterwayLinkCoordinatesLength - 2], currentAvailablecandidateShapeLNodeList[currentAvailableWaterwayLinkCoordinatesLength - 1] };
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTemp, DistanceToShapeLink(startCoordinate, shapeLinkTemp)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTemp, ShortestDistanceToShapeLink(startCoordinate, shapeLinkTemp)));
                 }
                 else
                 {
                     var shapeLinkTempUp = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index - 1], currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index] };
                     var shapeLinkTempDown = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index], currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index + 1] };
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTempUp, DistanceToShapeLink(startCoordinate, shapeLinkTempUp)));
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTempDown, DistanceToShapeLink(startCoordinate, shapeLinkTempDown)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTempUp, ShortestDistanceToShapeLink(startCoordinate, shapeLinkTempUp)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTempDown, ShortestDistanceToShapeLink(startCoordinate, shapeLinkTempDown)));
                 }
                 currentCandidateShapeLink.Sort(ShapeLinkWithDistanceCompare);
                 candidateShapeLink.Add(currentCandidateShapeLink[0]);
@@ -209,7 +298,11 @@ namespace IWRPM
             var insertedShapeLink = candidateShapeLink[0];
             var insertedTopoLink = new WaterwayTopoLink();
             insertedTopoLink = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedShapeLink.affiliatedTopoLinkID];
-            var insertedTopoNodeCoordinate = VerticalInsertedPointToShapeLink(startCoordinate, insertedShapeLink.shapeNodeWithIndex);
+            var insertedTopoNodeCoordinate = ShortestInsertedPointToShapeLink(startCoordinate, insertedShapeLink.shapeNodeWithIndex);
+            if (IsSameCoordinate(waterwayRoutePlannerGraph.m_dicWaterwayNode[_startWaterwayNodeID].waterNodeCoordinate, insertedTopoNodeCoordinate))
+            {
+                return _startWaterwayNodeID;
+            }
             var insertedWaterwayTopoNode = new WaterwayTopoNode();
             insertedWaterwayTopoNode.waterNodeID = "START-0000-START";
             insertedWaterwayTopoNode.waterNodeClass = 2;
@@ -239,7 +332,7 @@ namespace IWRPM
             insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
             for (var i = insertedShapeLink.shapeNodeWithIndex[1].index; i < insertedTopoLink.channelGeometry.Length; i++)
             {
-                insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                insertedWaterwayTopoLinkDownGeometry.Add(insertedTopoLink.channelGeometry[i]);
             }
             insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
             waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
@@ -292,10 +385,10 @@ namespace IWRPM
         public string InsertGoalTopoFeatures(string _goalWaterwayNodeID, double[] goalCoordinate)
         {
             var availableWaterwayLinkList = waterwayRoutePlannerGraph.Neighbors(_goalWaterwayNodeID);
-            var candidateShapeLink = new List<ShapeLinkWithDistance>();
+            var candidateShapeLink = new List<ShapeLinkWithShortestDistance>();
             foreach (var currentAvailableWaterwayLink in availableWaterwayLinkList)
             {
-                var currentCandidateShapeLink = new List<ShapeLinkWithDistance>();
+                var currentCandidateShapeLink = new List<ShapeLinkWithShortestDistance>();
                 var currentAvailablecandidateShapeLNodeList = new List<ShapeNodeWithIndex>();
                 var currentAvailableWaterwayLinkCoordinates = waterwayRoutePlannerGraph.m_dicWaterwayLink[currentAvailableWaterwayLink].channelGeometry;
                 var currentAvailableWaterwayLinkCoordinatesLength = currentAvailableWaterwayLinkCoordinates.Length;
@@ -309,19 +402,19 @@ namespace IWRPM
                 if (nearestShapeNode[0].index == 0)
                 {
                     var shapeLinkTemp = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[0], currentAvailablecandidateShapeLNodeList[1] };
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTemp, DistanceToShapeLink(goalCoordinate, shapeLinkTemp)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTemp, ShortestDistanceToShapeLink(goalCoordinate, shapeLinkTemp)));
                 }
                 else if (nearestShapeNode[0].index == (currentAvailableWaterwayLinkCoordinatesLength - 1))
                 {
                     var shapeLinkTemp = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[currentAvailableWaterwayLinkCoordinatesLength - 2], currentAvailablecandidateShapeLNodeList[currentAvailableWaterwayLinkCoordinatesLength - 1] };
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTemp, DistanceToShapeLink(goalCoordinate, shapeLinkTemp)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTemp, ShortestDistanceToShapeLink(goalCoordinate, shapeLinkTemp)));
                 }
                 else
                 {
                     var shapeLinkTempUp = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index - 1], currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index] };
                     var shapeLinkTempDown = new ShapeNodeWithIndex[] { currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index], currentAvailablecandidateShapeLNodeList[nearestShapeNode[0].index + 1] };
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTempUp, DistanceToShapeLink(goalCoordinate, shapeLinkTempUp)));
-                    currentCandidateShapeLink.Add(new ShapeLinkWithDistance(currentAvailableWaterwayLink, shapeLinkTempDown, DistanceToShapeLink(goalCoordinate, shapeLinkTempDown)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTempUp, ShortestDistanceToShapeLink(goalCoordinate, shapeLinkTempUp)));
+                    currentCandidateShapeLink.Add(new ShapeLinkWithShortestDistance(currentAvailableWaterwayLink, shapeLinkTempDown, ShortestDistanceToShapeLink(goalCoordinate, shapeLinkTempDown)));
                 }
                 currentCandidateShapeLink.Sort(ShapeLinkWithDistanceCompare);
                 candidateShapeLink.Add(currentCandidateShapeLink[0]);
@@ -329,7 +422,13 @@ namespace IWRPM
             candidateShapeLink.Sort(ShapeLinkWithDistanceCompare);
             var insertedShapeLink = candidateShapeLink[0];
             var insertedTopoLink = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedShapeLink.affiliatedTopoLinkID];
-            var insertedTopoNodeCoordinate = VerticalInsertedPointToShapeLink(goalCoordinate, insertedShapeLink.shapeNodeWithIndex);
+            var insertedTopoNodeCoordinate = ShortestInsertedPointToShapeLink(goalCoordinate, insertedShapeLink.shapeNodeWithIndex);
+
+            if (IsSameCoordinate(waterwayRoutePlannerGraph.m_dicWaterwayNode[_goalWaterwayNodeID].waterNodeCoordinate, insertedTopoNodeCoordinate))
+            {
+                return _goalWaterwayNodeID;
+            }
+
             var insertedWaterwayTopoNode = new WaterwayTopoNode();
             insertedWaterwayTopoNode.waterNodeID = "GOAL-9999-GOAL";
             insertedWaterwayTopoNode.waterNodeClass = 2;
@@ -423,6 +522,13 @@ namespace IWRPM
             //
         }
 
+        /// <summary>
+        /// 指定航道网络起止点ID搜索最优路径的方法
+        /// </summary>
+        /// <param name="graph"></param>
+        /// <param name="vehicle"></param>
+        /// <param name="start"></param>
+        /// <param name="goal"></param>
         public WaterwayRoutePlanner(WaterwayGraph graph, WaterwayVehicle vehicle, string start, string goal)
         {
             SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
@@ -455,14 +561,25 @@ namespace IWRPM
             }
         }
 
+
+        /// <summary>
+        /// 指定起止点坐标搜索最优路径的方法
+        /// </summary>
+        /// <param name="graph"></param>
+        /// <param name="vehicle"></param>
+        /// <param name="startCoordinate"></param>
+        /// <param name="goalCoordinate"></param>
         public WaterwayRoutePlanner(WaterwayGraph graph, WaterwayVehicle vehicle, double[] startCoordinate, double[] goalCoordinate)
         {
-            waterwayRoutePlannerGraph = graph;
-            
+            waterwayRoutePlannerGraph = WaterwayGraph.ConstructNewInstanceFromExistClass(graph);
+
             StartWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, startCoordinate);
             GoalWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, goalCoordinate);
 
             var StartGoalWaterwayNodeIDOnNetArray = InsertTemporaryTopoFeatures(StartWaterwayNodeID, startCoordinate, GoalWaterwayNodeID, goalCoordinate);
+
+            StartWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[0];
+            GoalWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[1];
 
             SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
             frontier.Enqueue(StartGoalWaterwayNodeIDOnNetArray[0], 0.0);
@@ -494,5 +611,52 @@ namespace IWRPM
             }
         }
 
+
+        public WaterwayRoutePlanner(WaterwayGraph graph, WaterwayVehicle vehicle, double[] startCoordinate, double[] goalCoordinate, int method)
+        {
+            if (method == 2)
+            {
+                waterwayRoutePlannerGraph = WaterwayGraph.ConstructNewInstanceFromExistClass(graph);
+
+                StartWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, startCoordinate);
+                GoalWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, goalCoordinate);
+
+                var StartGoalWaterwayNodeIDOnNetArray = InsertTemporaryTopoFeatures(StartWaterwayNodeID, startCoordinate, GoalWaterwayNodeID, goalCoordinate);
+
+                StartWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[0];
+                GoalWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[1];
+
+                SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
+                frontier.Enqueue(StartGoalWaterwayNodeIDOnNetArray[0], 0.0);
+
+                cameFrom.Add(StartGoalWaterwayNodeIDOnNetArray[0], new string[] { StartWaterwayNodeID, "START" });
+                costSoFar[StartGoalWaterwayNodeIDOnNetArray[0]] = Cost(0.0);
+
+                while (frontier.Count > 0)
+                {
+                    var current = frontier.Dequeue();
+
+                    if (current.Equals(StartGoalWaterwayNodeIDOnNetArray[1]))
+                    {
+                        isFindOptimalRoute = true;
+                        break;
+                    }
+
+                    foreach (var next in waterwayRoutePlannerGraph.Neighbors(current, vehicle, method))
+                    {
+                        double newCost = costSoFar[current] + Cost(next.toNextWaterwayNodeCost);
+                        if (!costSoFar.ContainsKey(next.nextWaterwayNodeID) || newCost < costSoFar[next.nextWaterwayNodeID])
+                        {
+                            costSoFar[next.nextWaterwayNodeID] = newCost;
+                            double priority = newCost + GreatCircleDistance(waterwayRoutePlannerGraph.m_dicWaterwayNode[StartGoalWaterwayNodeIDOnNetArray[0]], waterwayRoutePlannerGraph.m_dicWaterwayNode[StartGoalWaterwayNodeIDOnNetArray[1]], waterwayRoutePlannerGraph.m_dicWaterwayNode[next.nextWaterwayNodeID]);
+                            frontier.Enqueue(next.nextWaterwayNodeID, priority);
+                            cameFrom[next.nextWaterwayNodeID] = new string[2] { current, next.toNextWaterwayNodeLinkID };
+                        }
+                    }
+                }
+
+
+            }
+        }
     }
 }

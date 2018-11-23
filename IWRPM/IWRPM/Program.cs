@@ -67,10 +67,15 @@ namespace IWRPM
 
             //var startWaterwayNodeCoordiante = new double[] { 111.580000, 23.280000 };
             //var goalWaterwayNodeCoordiante = new double[] { 112.882832, 23.430000 };
-            var startWaterwayNodeCoordiante = new double[] { 112.551850, 23.110253 };
-            var goalWaterwayNodeCoordiante = new double[] { 112.807563, 23.193574 };
-            var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
-            OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, "START-0000-START", "GOAL-9999-GOAL");
+            //var startWaterwayNodeCoordiante = new double[] { 113.264213, 23.117617 };
+            //var goalWaterwayNodeCoordiante = new double[] { 111.8523483, 23.1409737 };
+            //var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
+            //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
+
+            var startWaterwayNodeCoordiante = new double[] { 113.264213, 23.117617 };
+            var goalWaterwayNodeCoordiante = new double[] { 111.8523483, 23.1409737 };
+            var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);
+            OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
 
             Console.ReadLine();  
         }

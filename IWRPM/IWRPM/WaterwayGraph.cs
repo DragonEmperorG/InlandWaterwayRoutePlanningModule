@@ -18,7 +18,7 @@ namespace IWRPM
     public class WaterwayGraph
     {
         //readonly string _shpfileDatasetsPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Datasets");
-        readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\WaterwayNetworkDatasets";
+        readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets";
         #region WaterwayGraph Members
 
         public bool isWaterwayNetworkDatasetsLoaded { get; set; } = false;
@@ -33,6 +33,45 @@ namespace IWRPM
             //
             // TODO: 在此处添加构造函数逻辑
             //
+        }
+
+        public WaterwayGraph(WaterwayGraph _waterwayGraph)
+        {
+            this.isWaterwayNetworkDatasetsLoaded = _waterwayGraph.isWaterwayNetworkDatasetsLoaded;
+            this.m_dicWaterwayNode = _waterwayGraph.m_dicWaterwayNode;
+            this.m_dicWaterwayLink = _waterwayGraph.m_dicWaterwayLink;
+            this.waterwayNodeSpatialIndex = _waterwayGraph.waterwayNodeSpatialIndex;
+        }
+
+        public static WaterwayGraph ConstructNewInstanceFromExistClass(WaterwayGraph _waterwayGraph)
+        {
+            var waterwayGraphNew = new WaterwayGraph();
+            bool isWaterwayNetworkDatasetsLoadedNew = new bool();
+            Dictionary<string, WaterwayTopoNode> m_dicWaterwayNodeNew = new Dictionary<string, WaterwayTopoNode>();
+            Dictionary<string, WaterwayTopoLink> m_dicWaterwayLinkNew = new Dictionary<string, WaterwayTopoLink>();
+            KDBush<WaterwayTopoNode> waterwayNodeSpatialIndexNew;
+
+            isWaterwayNetworkDatasetsLoadedNew = _waterwayGraph.isWaterwayNetworkDatasetsLoaded;
+            foreach (var item in _waterwayGraph.m_dicWaterwayNode)
+            {
+                var waterwayTopoNodeNew = new WaterwayTopoNode();
+                waterwayTopoNodeNew = WaterwayTopoNode.ConstructNewInstanceFromExistClass(item.Value);
+                m_dicWaterwayNodeNew.Add(waterwayTopoNodeNew.waterNodeID, waterwayTopoNodeNew);
+            }
+            foreach (var item in _waterwayGraph.m_dicWaterwayLink)
+            {
+                var waterwayTopoLinkNew = new WaterwayTopoLink();
+                waterwayTopoLinkNew = item.Value;
+                m_dicWaterwayLinkNew.Add(waterwayTopoLinkNew.waterLinkID, waterwayTopoLinkNew);
+            }
+            waterwayNodeSpatialIndexNew = new KDBush<WaterwayTopoNode>(m_dicWaterwayNodeNew.Values.ToArray(), p => p.waterNodeCoordinate[0], p => p.waterNodeCoordinate[1], nodeSize: 10);
+
+            waterwayGraphNew.isWaterwayNetworkDatasetsLoaded = isWaterwayNetworkDatasetsLoadedNew;
+            waterwayGraphNew.m_dicWaterwayNode = m_dicWaterwayNodeNew;
+            waterwayGraphNew.m_dicWaterwayLink = m_dicWaterwayLinkNew;
+            waterwayGraphNew.waterwayNodeSpatialIndex = waterwayNodeSpatialIndexNew;
+
+            return waterwayGraphNew;
         }
 
         /// <summary>
@@ -316,6 +355,31 @@ namespace IWRPM
             }
             return currentWaterwayLinkConnectIDLists;
         }
+
+
+        public IEnumerable<WaterwayNeighbor> Neighbors(string currentWaterwayNodeID, WaterwayVehicle currentVehicle, int method)
+        {
+            if (method == 2)
+            {
+                string[] currentWaterwayLinkOutIDLists = m_dicWaterwayNode[currentWaterwayNodeID].waterLinkOutList;
+                foreach (var currentWaterwayLinkOutID in currentWaterwayLinkOutIDLists)
+                {
+                    if (!EstimatePassingThroughChannel(currentWaterwayLinkOutID, currentVehicle))
+                        continue;
+                    string currentWaterwayLinkOutUpStreamWaterNodeID = m_dicWaterwayLink[currentWaterwayLinkOutID].upStreamWaterNodeID;
+                    string nextWaterwayNodeID = currentWaterwayNodeID != currentWaterwayLinkOutUpStreamWaterNodeID ? currentWaterwayLinkOutUpStreamWaterNodeID : m_dicWaterwayLink[currentWaterwayLinkOutID].downStreamWaterNodeID;
+
+                    if (!m_dicWaterwayNode.ContainsKey(nextWaterwayNodeID))
+                        continue;
+
+                    var cost = m_dicWaterwayLink[currentWaterwayLinkOutID].channelLength * m_dicWaterwayLink[currentWaterwayLinkOutID].channelClass;
+
+                    WaterwayNeighbor nextWaterwayNeighbor = new WaterwayNeighbor(nextWaterwayNodeID, currentWaterwayLinkOutID, cost);
+                    yield return nextWaterwayNeighbor;
+                }
+            }                
+        }
+
 
         /// <summary>
         /// Load WaterwayNetwork Datasets

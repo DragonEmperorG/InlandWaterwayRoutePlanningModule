@@ -52,5 +52,31 @@ namespace IWRPM
             this.waterNodeClass = _waterNodeClass;
 
         }
+
+        public static WaterwayTopoNode ConstructNewInstanceFromExistClass(WaterwayTopoNode _waterwayTopoNode)
+        {
+            var waterwayTopoNodeNew = new WaterwayTopoNode();
+            waterwayTopoNodeNew.waterNodeID = new string(_waterwayTopoNode.waterNodeID.ToCharArray());
+            waterwayTopoNodeNew.waterNodeCoordinate = new double[2] { _waterwayTopoNode.waterNodeCoordinate[0], _waterwayTopoNode.waterNodeCoordinate[1] };
+            waterwayTopoNodeNew.waterNodeName = new string(_waterwayTopoNode.waterNodeName.ToCharArray()); ;
+            waterwayTopoNodeNew.waterNodeType = _waterwayTopoNode.waterNodeType;
+            waterwayTopoNodeNew.waterLinkInNumber = _waterwayTopoNode.waterLinkInNumber;
+            waterwayTopoNodeNew.waterLinkOutNumber = _waterwayTopoNode.waterLinkOutNumber;
+            var waterLinkInListNew = new List<string>();
+            for (var i = 0; i < _waterwayTopoNode.waterLinkInNumber; i++)
+            {
+                waterLinkInListNew.Add(_waterwayTopoNode.waterLinkInList[i]);
+            }
+            waterwayTopoNodeNew.waterLinkInList = waterLinkInListNew.ToArray();
+            var waterLinkOutListNew = new List<string>();
+            for (var i = 0; i < _waterwayTopoNode.waterLinkOutNumber; i++)
+            {
+                waterLinkOutListNew.Add(_waterwayTopoNode.waterLinkOutList[i]);
+            }
+            waterwayTopoNodeNew.waterLinkOutList = waterLinkOutListNew.ToArray();
+            waterwayTopoNodeNew.waterNodeClass = _waterwayTopoNode.waterNodeClass;
+
+            return waterwayTopoNodeNew;
+        }
     }
 }
