@@ -19,6 +19,7 @@ namespace IWRPM
     {
         //readonly string _shpfileDatasetsPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Datasets");
         readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets";
+        //readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\珠江数据\\OutputDatasets";
         #region WaterwayGraph Members
 
         public bool isWaterwayNetworkDatasetsLoaded { get; set; } = false;

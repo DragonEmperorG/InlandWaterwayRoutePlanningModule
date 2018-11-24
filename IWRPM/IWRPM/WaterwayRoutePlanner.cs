@@ -166,7 +166,7 @@ namespace IWRPM
                 var C1 = from[1] - k * from[0];
                 var A2 = B1 / A1;
                 var B2 = -1;
-                var C2 = _point[1] - k * _point[0];
+                var C2 = _point[1] - A2 * _point[0];
                 var x = (B1 * C2 - C1 * B2) / (A1 * B2 - A2 * B1);
                 var y = (A1 * C2 - A2 * C1) / (B1 * A2 - B2 * A1);
                 verticalInsertedPointCoordinate[0] = x;
@@ -628,7 +628,7 @@ namespace IWRPM
 
                 SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
                 frontier.Enqueue(StartGoalWaterwayNodeIDOnNetArray[0], 0.0);
-
+ 
                 cameFrom.Add(StartGoalWaterwayNodeIDOnNetArray[0], new string[] { StartWaterwayNodeID, "START" });
                 costSoFar[StartGoalWaterwayNodeIDOnNetArray[0]] = Cost(0.0);
 

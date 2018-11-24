@@ -67,15 +67,20 @@ namespace IWRPM
 
             //var startWaterwayNodeCoordiante = new double[] { 111.580000, 23.280000 };
             //var goalWaterwayNodeCoordiante = new double[] { 112.882832, 23.430000 };
-            //var startWaterwayNodeCoordiante = new double[] { 113.264213, 23.117617 };
-            //var goalWaterwayNodeCoordiante = new double[] { 111.8523483, 23.1409737 };
-            //var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
-            //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
-
             var startWaterwayNodeCoordiante = new double[] { 113.264213, 23.117617 };
             var goalWaterwayNodeCoordiante = new double[] { 111.8523483, 23.1409737 };
-            var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);
+            var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
             OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
+
+            //var startWaterwayNodeCoordiante = new double[] { 113.264213, 23.117617 };
+            //var goalWaterwayNodeCoordiante = new double[] { 111.8523483, 23.1409737 };
+            //var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);
+            //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
+
+            //var zhuJiangStartWaterwayNodeCoordiante = new double[] { 113.25256347666249, 23.11145052848126 };
+            //var zhuJiangGoalWaterwayNodeCoordiante = new double[] { 113.34354400634766, 23.110207183273666 };
+            //var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, zhuJiangStartWaterwayNodeCoordiante, zhuJiangGoalWaterwayNodeCoordiante, 2);
+            //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
 
             Console.ReadLine();  
         }
