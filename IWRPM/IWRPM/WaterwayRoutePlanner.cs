@@ -68,7 +68,18 @@ namespace IWRPM
             var distance = EARTH_RADIUS * _cRad;
 
             return distance;
-        }        
+        }
+
+        public double GreatCircleDistance(double[] _goal, double[] _current)
+        {
+            var _currentCoordinate = _current;
+            var _goalCoordinate = _goal;
+            var _cosC = Math.Cos(Rad(90.0 - _goalCoordinate[1])) * Math.Cos(Rad(90.0 - _currentCoordinate[1])) + Math.Sin(Rad(90.0 - _goalCoordinate[1])) * Math.Sin(Rad(90.0 - _currentCoordinate[1])) * Math.Cos(Rad(_goalCoordinate[0]) - Rad(_currentCoordinate[0]));
+            var _cRad = Math.Acos(_cosC);
+            var distance = EARTH_RADIUS * _cRad;
+
+            return distance;
+        }
 
         public double Cost(double originalCost)
         {
@@ -118,6 +129,20 @@ namespace IWRPM
             return isSameCoordinate;
         }
 
+        static bool IsInBoundingBox(double[] _traceCoordinate, double _minLongititude, double _minLaititutde, double _maxLongititude, double _maxLaititutde)
+        {
+            bool isInBoundingBox = false;
+            if ((_traceCoordinate[0] >= _minLongititude) && (_traceCoordinate[0] <= _maxLongititude))
+            {
+                if ((_traceCoordinate[1] >= _minLaititutde) && (_traceCoordinate[1] <= _maxLaititutde))
+                {
+                    isInBoundingBox = true;
+                }
+            };
+
+            return isInBoundingBox;
+        }
+
         /// <summary>
         /// 求解输入坐标点距离形状线的距离
         /// </summary>
@@ -126,17 +151,67 @@ namespace IWRPM
         /// <returns></returns>
         double ShortestDistanceToShapeLink(double[] _point, ShapeNodeWithIndex[] _link)
         {
+            var shortestDistance = 0.0;
+            var verticalInsertedPointCoordinate = new double[2];
             var from = _link[0].coordinate;
             var to = _link[1].coordinate;
             var k = (from[1] - to[1]) / (from[0] - to[0]);
-            var A = k;
-            var B = -1;
-            var C = from[1] - k * from[0];
-            var verticalDistance = Math.Abs(A * _point[0] + B * _point[1] + C) / Math.Sqrt(Math.Pow(A, 2) + Math.Pow(B, 2));
-            var from2pointDistance = Math.Sqrt(Math.Pow(from[0] - _point[0], 2) + Math.Pow(from[1] - _point[1], 2));
-            var to2pointDistance = Math.Sqrt(Math.Pow(to[0] - _point[0], 2) + Math.Pow(to[1] - _point[1], 2));
-            var shortestEndpointDistance = (from2pointDistance > to2pointDistance) ? to2pointDistance : from2pointDistance;
-            var shortestDistance = (shortestEndpointDistance > verticalDistance) ? verticalDistance : shortestEndpointDistance;
+
+            if (k == 0)
+            {
+                verticalInsertedPointCoordinate[0] = _point[0];
+                verticalInsertedPointCoordinate[1] = from[1];
+            }
+            else if (double.IsInfinity(k))
+            {
+                verticalInsertedPointCoordinate[0] = from[0];
+                verticalInsertedPointCoordinate[1] = _point[1];
+            }
+            else
+            {
+                var A1 = k;
+                var B1 = -1;
+                var C1 = from[1] - k * from[0];
+                var A2 = B1 / A1;
+                var B2 = -1;
+                var C2 = _point[1] - A2 * _point[0];
+                var x = (B1 * C2 - C1 * B2) / (A1 * B2 - A2 * B1);
+                var y = (A1 * C2 - A2 * C1) / (B1 * A2 - B2 * A1);
+                verticalInsertedPointCoordinate[0] = x;
+                verticalInsertedPointCoordinate[1] = y;
+            }
+
+            var vertical2pointDistance = GreatCircleDistance(_point, verticalInsertedPointCoordinate);
+            var from2pointDistance = GreatCircleDistance(_point, from);
+            var to2pointDistance = GreatCircleDistance(_point, to);
+
+            var minLongitude = Math.Min(from[0], to[0]);
+            var minLatitude = Math.Min(from[1], to[1]);
+            var maxLongitude = Math.Max(from[0], to[0]);
+            var maxLatitude = Math.Max(from[1], to[1]);
+
+            if (from2pointDistance > to2pointDistance)
+            {
+                shortestDistance = to2pointDistance;
+                if (to2pointDistance > vertical2pointDistance)
+                {
+                    if (IsInBoundingBox(verticalInsertedPointCoordinate, minLongitude, minLatitude, maxLongitude, maxLatitude))
+                    {
+                        shortestDistance = vertical2pointDistance;
+                    }              
+                }
+            }
+            else
+            {
+                shortestDistance = from2pointDistance;
+                if (from2pointDistance > vertical2pointDistance)
+                {
+                    if (IsInBoundingBox(verticalInsertedPointCoordinate, minLongitude, minLatitude, maxLongitude, maxLatitude))
+                    {
+                        shortestDistance = vertical2pointDistance;
+                    }
+                }
+            }
 
             return shortestDistance;
         }
@@ -173,16 +248,24 @@ namespace IWRPM
                 verticalInsertedPointCoordinate[1] = y;
             }
 
-            var vertical2pointDistance = Math.Sqrt(Math.Pow(verticalInsertedPointCoordinate[0] - _point[0], 2) + Math.Pow(verticalInsertedPointCoordinate[1] - _point[1], 2));
-            var from2pointDistance = Math.Sqrt(Math.Pow(from[0] - _point[0], 2) + Math.Pow(from[1] - _point[1], 2));
-            var to2pointDistance = Math.Sqrt(Math.Pow(to[0] - _point[0], 2) + Math.Pow(to[1] - _point[1], 2));
+            var vertical2pointDistance = GreatCircleDistance(_point, verticalInsertedPointCoordinate);
+            var from2pointDistance = GreatCircleDistance(_point, from);
+            var to2pointDistance = GreatCircleDistance(_point, to);
+
+            var minLongitude = Math.Min(from[0], to[0]);
+            var minLatitude = Math.Min(from[1], to[1]);
+            var maxLongitude = Math.Max(from[0], to[0]);
+            var maxLatitude = Math.Max(from[1], to[1]);
 
             if (from2pointDistance > to2pointDistance)
             {
                 shortestInsertedPointCoordinate = to;
                 if (to2pointDistance > vertical2pointDistance)
                 {
-                    shortestInsertedPointCoordinate = verticalInsertedPointCoordinate;
+                    if (IsInBoundingBox(verticalInsertedPointCoordinate, minLongitude, minLatitude, maxLongitude, maxLatitude))
+                    {
+                        shortestInsertedPointCoordinate = verticalInsertedPointCoordinate;
+                    }
                 }
             }
             else
@@ -190,7 +273,10 @@ namespace IWRPM
                 shortestInsertedPointCoordinate = from;
                 if (from2pointDistance > vertical2pointDistance)
                 {
-                    shortestInsertedPointCoordinate = verticalInsertedPointCoordinate;
+                    if (IsInBoundingBox(verticalInsertedPointCoordinate, minLongitude, minLatitude, maxLongitude, maxLatitude))
+                    {
+                        shortestInsertedPointCoordinate = verticalInsertedPointCoordinate;
+                    }
                 }
             }
 
@@ -221,7 +307,7 @@ namespace IWRPM
                 var C1 = from[1] - k * from[0];
                 var A2 = B1 / A1;
                 var B2 = -1;
-                var C2 = _point[1] - k * _point[0];
+                var C2 = _point[1] - A2 * _point[0];
                 var x = (B1 * C2 - C1 * B2) / (A1 * B2 - A2 * B1);
                 var y = (A1 * C2 - A2 * C1) / (B1 * A2 - B2 * A1);
                 verticalInsertedPointCoordinate[0] = x;

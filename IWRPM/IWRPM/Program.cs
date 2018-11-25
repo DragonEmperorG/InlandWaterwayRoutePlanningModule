@@ -67,8 +67,8 @@ namespace IWRPM
 
             //var startWaterwayNodeCoordiante = new double[] { 111.580000, 23.280000 };
             //var goalWaterwayNodeCoordiante = new double[] { 112.882832, 23.430000 };
-            var startWaterwayNodeCoordiante = new double[] { 113.264213, 23.117617 };
-            var goalWaterwayNodeCoordiante = new double[] { 111.8523483, 23.1409737 };
+            var startWaterwayNodeCoordiante = new double[] { 112.8582419, 23.2805656 };
+            var goalWaterwayNodeCoordiante = new double[] { 112.8821967, 23.4308305 };
             var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
             OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
 
