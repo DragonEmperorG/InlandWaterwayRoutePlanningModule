@@ -59,6 +59,18 @@ namespace IWRPM
             return heuristic;
         }
 
+        public double GreatCircleDistanceHeuristicWithDirection(WaterwayTopoNode _start, WaterwayTopoNode _goal, WaterwayTopoNode _current)
+        {
+            double alpha = 0.001;
+            var dx_current2goal = Math.Abs(_current.waterNodeCoordinate[0] - _goal.waterNodeCoordinate[0]) * Latitude_RADIUS * Math.Cos(Rad(_goal.waterNodeCoordinate[1]));
+            var dy_current2goal = Math.Abs(_current.waterNodeCoordinate[1] - _goal.waterNodeCoordinate[1]) * Latitude_RADIUS;
+            var dx_start2goal = Math.Abs(_start.waterNodeCoordinate[0] - _goal.waterNodeCoordinate[0]) * Latitude_RADIUS * Math.Cos(Rad(_goal.waterNodeCoordinate[1])); ;
+            var dy_start2goal = Math.Abs(_start.waterNodeCoordinate[1] - _goal.waterNodeCoordinate[1]) * Latitude_RADIUS;
+            var cross = Math.Abs(dx_current2goal * dy_start2goal - dx_start2goal * dy_current2goal);
+            var heuristic = Math.Abs(dx_current2goal) + Math.Abs(dy_current2goal) + cross * alpha;
+            return heuristic;
+        }
+
         public double GreatCircleDistance(WaterwayTopoNode _start, WaterwayTopoNode _goal, WaterwayTopoNode _current)
         {
             var _currentCoordinate = _current.waterNodeCoordinate;
@@ -400,18 +412,29 @@ namespace IWRPM
             var insertedWaterwayTopoLinkUp = new WaterwayTopoLink(insertedTopoLink);
             insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
             insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
-            insertedWaterwayTopoLinkUp.channelLength = insertedTopoLink.channelLength * insertedShapeLink.shapeNodeWithIndex[0].index / (insertedTopoLink.channelGeometry.Length - 1);
+            var insertedWaterwayTopoLinkUpChannelLength = 0.0;
             var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
             for (var i = 0; i <= insertedShapeLink.shapeNodeWithIndex[0].index; i++)
             {
                 insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                if (i >= 1)
+                {
+                    var coordinateLastTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i - 1].X, insertedWaterwayTopoLinkUpGeometry[i - 1].Y };
+                    var coordinateCurrentTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i].X, insertedWaterwayTopoLinkUpGeometry[i].Y };
+                    insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
+                }
             }
             insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+            var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
+            var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
+            var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
+            insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
+            insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
             insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
             waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
 
             var insertedWaterwayTopoLinkDown = new WaterwayTopoLink(insertedTopoLink);
-            insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + insertedTopoLink.downStreamWaterNodeID;
+            insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
             insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
             insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
             var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
@@ -433,7 +456,7 @@ namespace IWRPM
                 insertedWaterwayTopoNode.waterLinkInNumber = 2;
                 insertedWaterwayTopoNode.waterLinkOutNumber = 2;
                 insertedWaterwayTopoNode.waterLinkInList = new string[2] { insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkDown.waterLinkID };
-                insertedWaterwayTopoNode.waterLinkOutList = insertedWaterwayTopoNode.waterLinkInList;
+                insertedWaterwayTopoNode.waterLinkOutList = new string[2] { insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkDown.waterLinkID };
 
                 upStreamWaterwayNodeTempFix.waterLinkInList[Array.IndexOf(upStreamWaterwayNodeTempFix.waterLinkInList, insertedTopoLink.waterLinkID)] = insertedWaterwayTopoLinkUp.waterLinkID;
                 upStreamWaterwayNodeTempFix.waterLinkOutList[Array.IndexOf(upStreamWaterwayNodeTempFix.waterLinkOutList, insertedTopoLink.waterLinkID)] = insertedWaterwayTopoLinkUp.waterLinkID;
@@ -526,18 +549,29 @@ namespace IWRPM
             var insertedWaterwayTopoLinkUp = new WaterwayTopoLink(insertedTopoLink);
             insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
             insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
-            insertedWaterwayTopoLinkUp.channelLength = insertedTopoLink.channelLength * insertedShapeLink.shapeNodeWithIndex[0].index / (insertedTopoLink.channelGeometry.Length - 1);
+            var insertedWaterwayTopoLinkUpChannelLength = 0.0;
             var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
             for (var i = 0; i <= insertedShapeLink.shapeNodeWithIndex[0].index; i++)
             {
                 insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                if (i >= 1)
+                {
+                    var coordinateLastTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i-1].X, insertedWaterwayTopoLinkUpGeometry[i - 1].Y };
+                    var coordinateCurrentTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i].X, insertedWaterwayTopoLinkUpGeometry[i].Y };
+                    insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
+                }
             }
             insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+            var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
+            var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
+            var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
+            insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
+            insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
             insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
             waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
 
             var insertedWaterwayTopoLinkDown = new WaterwayTopoLink(insertedTopoLink);
-            insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + insertedTopoLink.downStreamWaterNodeID;
+            insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
             insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
             insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
             var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
@@ -559,7 +593,7 @@ namespace IWRPM
                 insertedWaterwayTopoNode.waterLinkInNumber = 2;
                 insertedWaterwayTopoNode.waterLinkOutNumber = 2;
                 insertedWaterwayTopoNode.waterLinkInList = new string[2] { insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkDown.waterLinkID };
-                insertedWaterwayTopoNode.waterLinkOutList = insertedWaterwayTopoNode.waterLinkInList;
+                insertedWaterwayTopoNode.waterLinkOutList = new string[2] { insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkDown.waterLinkID };
 
                 upStreamWaterwayNodeTempFix.waterLinkInList[Array.IndexOf(upStreamWaterwayNodeTempFix.waterLinkInList, insertedTopoLink.waterLinkID)] = insertedWaterwayTopoLinkUp.waterLinkID;
                 upStreamWaterwayNodeTempFix.waterLinkOutList[Array.IndexOf(upStreamWaterwayNodeTempFix.waterLinkOutList, insertedTopoLink.waterLinkID)] = insertedWaterwayTopoLinkUp.waterLinkID;
@@ -599,6 +633,33 @@ namespace IWRPM
             var _startWaterwayNodeIDOnNet = InsertStartTopoFeatures(_startWaterwayNodeID, startCoordinate);
             var _goalWaterwayNodeIDOnNet = InsertGoalTopoFeatures(_goalWaterwayNodeID, goalCoordinat);
             return new string[2] { _startWaterwayNodeIDOnNet, _goalWaterwayNodeIDOnNet };
+        }
+
+        public string[] InsertTemporaryTopoFeatures(double[] startCoordinate, double[] goalCoordinat)
+        {
+            var _startWaterwayNodeIDOnNet = "";
+            _startWaterwayNodeIDOnNet = GetNearestWaterwayNodeByCoorninate(waterwayRoutePlannerGraph, startCoordinate);
+            _startWaterwayNodeIDOnNet = InsertStartTopoFeatures(_startWaterwayNodeIDOnNet, startCoordinate);
+
+            var _goalWaterwayNodeIDOnNet = "";
+            var _goalWaterwayNodeIDOnNetExcStart = GetNearestWaterwayNodeByCoorninate(waterwayRoutePlannerGraph, goalCoordinat);
+            var distance1 = GetDistanceByCoordinate(goalCoordinat, waterwayRoutePlannerGraph.m_dicWaterwayNode[_goalWaterwayNodeIDOnNetExcStart].waterNodeCoordinate);
+            var distance2 = GetDistanceByCoordinate(goalCoordinat, waterwayRoutePlannerGraph.m_dicWaterwayNode[_startWaterwayNodeIDOnNet].waterNodeCoordinate);
+
+            if (distance1 <= distance2)
+            {
+                _goalWaterwayNodeIDOnNet = _goalWaterwayNodeIDOnNetExcStart;
+            }
+            else
+            {
+                _goalWaterwayNodeIDOnNet = _startWaterwayNodeIDOnNet;
+            }
+            _goalWaterwayNodeIDOnNet = InsertGoalTopoFeatures(_goalWaterwayNodeIDOnNet, goalCoordinat);
+
+            StartWaterwayNodeID = _startWaterwayNodeIDOnNet;
+            GoalWaterwayNodeID = _goalWaterwayNodeIDOnNet;
+
+            return new string[2] { StartWaterwayNodeID, GoalWaterwayNodeID };
         }
 
         public WaterwayRoutePlanner()
@@ -659,13 +720,7 @@ namespace IWRPM
         {
             waterwayRoutePlannerGraph = WaterwayGraph.ConstructNewInstanceFromExistClass(graph);
 
-            StartWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, startCoordinate);
-            GoalWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, goalCoordinate);
-
-            var StartGoalWaterwayNodeIDOnNetArray = InsertTemporaryTopoFeatures(StartWaterwayNodeID, startCoordinate, GoalWaterwayNodeID, goalCoordinate);
-
-            StartWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[0];
-            GoalWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[1];
+            var StartGoalWaterwayNodeIDOnNetArray = InsertTemporaryTopoFeatures(startCoordinate, goalCoordinate);
 
             SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
             frontier.Enqueue(StartGoalWaterwayNodeIDOnNetArray[0], 0.0);
@@ -690,6 +745,7 @@ namespace IWRPM
                     {
                         costSoFar[next.nextWaterwayNodeID] = newCost;
                         double priority = newCost + ManhattanDistanceHeuristicWithDirection(waterwayRoutePlannerGraph.m_dicWaterwayNode[StartGoalWaterwayNodeIDOnNetArray[0]], waterwayRoutePlannerGraph.m_dicWaterwayNode[StartGoalWaterwayNodeIDOnNetArray[1]], waterwayRoutePlannerGraph.m_dicWaterwayNode[next.nextWaterwayNodeID]);
+                        //double priority = newCost + GreatCircleDistance(waterwayRoutePlannerGraph.m_dicWaterwayNode[StartGoalWaterwayNodeIDOnNetArray[0]], waterwayRoutePlannerGraph.m_dicWaterwayNode[StartGoalWaterwayNodeIDOnNetArray[1]], waterwayRoutePlannerGraph.m_dicWaterwayNode[next.nextWaterwayNodeID]);
                         frontier.Enqueue(next.nextWaterwayNodeID, priority);
                         cameFrom[next.nextWaterwayNodeID] = new string[2] { current, next.toNextWaterwayNodeLinkID };
                     }
@@ -704,13 +760,7 @@ namespace IWRPM
             {
                 waterwayRoutePlannerGraph = WaterwayGraph.ConstructNewInstanceFromExistClass(graph);
 
-                StartWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, startCoordinate);
-                GoalWaterwayNodeID = GetNearestWaterwayNodeByCoorninate(graph, goalCoordinate);
-
-                var StartGoalWaterwayNodeIDOnNetArray = InsertTemporaryTopoFeatures(StartWaterwayNodeID, startCoordinate, GoalWaterwayNodeID, goalCoordinate);
-
-                StartWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[0];
-                GoalWaterwayNodeID = StartGoalWaterwayNodeIDOnNetArray[1];
+                var StartGoalWaterwayNodeIDOnNetArray = InsertTemporaryTopoFeatures(startCoordinate, goalCoordinate);
 
                 SimplePriorityQueue<string, double> frontier = new SimplePriorityQueue<string, double>();
                 frontier.Enqueue(StartGoalWaterwayNodeIDOnNetArray[0], 0.0);

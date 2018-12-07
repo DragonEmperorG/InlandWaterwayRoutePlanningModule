@@ -18,8 +18,8 @@ namespace IWRPM
     public class WaterwayGraph
     {
         //readonly string _shpfileDatasetsPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Datasets");
-        readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets";
-        //readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\珠江数据\\OutputDatasets";
+        readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets3";
+        //readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\Issue02";
         #region WaterwayGraph Members
 
         public bool isWaterwayNetworkDatasetsLoaded { get; set; } = false;
@@ -136,6 +136,10 @@ namespace IWRPM
                     }
                 }
                 _countNumRecordWaterwayNodeDatasets += 1;
+                //if (waterwayTopoNodeTemp.waterNodeID == "ZJ-0020")
+                //{
+                //    Console.WriteLine(waterwayTopoNodeTemp.waterNodeID);
+                //}
                 _dicWaterwayNode.Add(waterwayTopoNodeTemp.waterNodeID, waterwayTopoNodeTemp);
                 Console.WriteLine("{0} WaterwayNode has been loaded({1}/{2})!", waterwayTopoNodeTemp.waterNodeID, _countNumRecordWaterwayNodeDatasets, _numRecordsWaterwayNodeDatasets);
             }
@@ -387,9 +391,9 @@ namespace IWRPM
         /// </summary>
         public void LoadWaterwayNetworkDatasets()
         {
-            var pathTemp = Path.Combine(_shpfileDatasetsPath, "WaterwayNodeWGS84.shp");
+            var pathTemp = Path.Combine(_shpfileDatasetsPath, "WaterwayNodeCGCS2000.shp");
             m_dicWaterwayNode = LoadWaterwayNodeDatasets(pathTemp);
-            m_dicWaterwayLink = LoadWaterwayLinkDatasets(Path.Combine(_shpfileDatasetsPath, "WaterwayLinkWGS84.shp"));
+            m_dicWaterwayLink = LoadWaterwayLinkDatasets(Path.Combine(_shpfileDatasetsPath, "WaterwayLinkCGCS2000.shp"));
             waterwayNodeSpatialIndex = ConstructSpatialIndex(m_dicWaterwayNode);
             isWaterwayNetworkDatasetsLoaded = true;
             Console.WriteLine("Waterway Network Datasets have been loaded!");

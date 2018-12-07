@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Web;
 
 
@@ -17,7 +18,7 @@ namespace IWRPM
 
         public List<string> messages { get; set; } = new List<string>();
         public string checksum { get; set; } = "dzwAANwIAAA";
-        public WaterwayRoutePlannerResponseRoutes routes { get; set; }
+        public WaterwayRoutePlannerResponseRoutes routes { get; set; } = new WaterwayRoutePlannerResponseRoutes();
         public List<WaterwayRoutePlannerResponseDirection> directions { get; set; } = new List<WaterwayRoutePlannerResponseDirection>();
 
         public WaterwayRoutePlannerResponse()
@@ -134,7 +135,38 @@ namespace IWRPM
             return distance;
         }
 
-        public WaterwayRoutePlannerResponse OutputRouteResults(WaterwayGraph waterwayGraph, WaterwayRoutePlanner channelRoutePlanner, string start, string goal)
+        public string TransformChannelNameVoiceBroadcast(string _channelName)
+        {
+            var _transformedChannelName = _channelName;
+
+            if (_channelName.Length >= 2)
+            {
+                // 检查航道名称是否为内部名称
+                var _channelNameLast = _channelName.Substring(_channelName.Length - 1, 1);
+                if (_channelNameLast == "）")
+                {
+                    //处理按站区分的航道
+                    var indexLeft = _channelName.IndexOf("（");
+                    _transformedChannelName = _channelName.Substring(0, indexLeft);                    
+                }
+
+                //处理航道分1,2 ……的情况
+                _channelNameLast = _transformedChannelName.Substring(_transformedChannelName.Length - 1, 1);
+                if (Regex.IsMatch(_channelNameLast, @"^\d+$"))
+                {
+                    _transformedChannelName = _transformedChannelName.Substring(0, _transformedChannelName.Length - 1);
+                }
+                var _channelPostfix = _transformedChannelName.Substring(_transformedChannelName.Length - 2, 2);
+                if (_channelPostfix != "水道" && _channelPostfix != "航道")
+                {
+                    _transformedChannelName = _transformedChannelName + "航道";
+                }
+            }
+            
+            return _transformedChannelName;
+        }
+
+        public WaterwayRoutePlannerResponse OutputRouteResults(WaterwayGraph waterwayGraph, WaterwayRoutePlanner channelRoutePlanner, string start, string goal, double averageSpeed)
         {
             if (channelRoutePlanner.isFindOptimalRoute)
             {
@@ -177,7 +209,8 @@ namespace IWRPM
                 waterwayRoutePlannerResponseRoutesFeature.attributes.FirstStopID = start;
                 waterwayRoutePlannerResponseRoutesFeature.attributes.LastStopID = goal;
                 waterwayRoutePlannerResponseRoutesFeature.attributes.StopCount = "2";
-                waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime = "3600.0";
+                var total_TravelTime = routeLength / 1000.0 / averageSpeed * 60.0;
+                waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime = total_TravelTime.ToString();
                 waterwayRoutePlannerResponseRoutesFeature.attributes.StartTime = "0";
                 waterwayRoutePlannerResponseRoutesFeature.attributes.EndTime = "360000";
                 waterwayRoutePlannerResponseRoutesFeature.attributes.StartTimeUTC = "30000000";
@@ -186,18 +219,22 @@ namespace IWRPM
                 waterwayRoutePlannerResponseRoutesFeature.attributes.Bridge_Number = bridgeNumber.ToString();
                 waterwayRoutePlannerResponseRoutesFeature.attributes.ShipLock_Number = shipLockNumber.ToString();
 
+                int directionFeatureCount = 0;
+
                 WaterwayRoutePlannerResponseDirection waterwayRoutePlannerResponseDirection = new WaterwayRoutePlannerResponseDirection();
                 WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStart = new WaterwayRoutePlannerResponseDirectionFeature();
                 WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringStart = new WaterwayRoutePlannerResponseDirectionFeatureString();
                 waterwayRoutePlannerResponseDirectionFeatureStart.attributes.length = 0;
                 waterwayRoutePlannerResponseDirectionFeatureStart.attributes.time = "0";
-                waterwayRoutePlannerResponseDirectionFeatureStart.attributes.text = "Start at " + waterwayGraph.m_dicWaterwayNode[start].waterNodeName;
+                //waterwayRoutePlannerResponseDirectionFeatureStart.attributes.text = "Start at " + waterwayGraph.m_dicWaterwayNode[start].waterNodeName;
+                waterwayRoutePlannerResponseDirectionFeatureStart.attributes.text = 0.0;
                 waterwayRoutePlannerResponseDirectionFeatureStart.attributes.ETA = 0.0;
                 waterwayRoutePlannerResponseDirectionFeatureStart.attributes.maneuverType = "esriDMTDepart";
                 waterwayRoutePlannerResponseDirectionFeatureStart.geometry.type = "point";
                 waterwayRoutePlannerResponseDirectionFeatureStart.geometry.geom.Add(startCoordinate);
                 waterwayRoutePlannerResponseDirectionFeatureStart.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringStart);
                 waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureStart);
+                directionFeatureCount += 1;
 
                 WaterwayRoutePlannerResponseDirectionSummaryEnvelope waterwayRoutePlannerResponseDirectionSummaryEnvelope = new WaterwayRoutePlannerResponseDirectionSummaryEnvelope();
                 if (startCoordinate[0] >= goalCoordinate[0])
@@ -224,7 +261,7 @@ namespace IWRPM
                 waterwayRoutePlannerResponseDirection.routeId = "1";
                 waterwayRoutePlannerResponseDirection.routeName = waterwayRoutePlannerResponseRoutesFeature.attributes.Name;
                 waterwayRoutePlannerResponseDirection.summary.totalLength = waterwayRoutePlannerResponseRoutesFeature.attributes.Shape_Length;
-                waterwayRoutePlannerResponseDirection.summary.totalTime = "3660.0";
+                waterwayRoutePlannerResponseDirection.summary.totalTime = waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime;
                 waterwayRoutePlannerResponseDirection.summary.totalDriveTime = waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime;
 
 
@@ -342,7 +379,9 @@ namespace IWRPM
                         var currentDirectionTraceWaterwayNode = waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult];
 
 
-                        WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureTemp = new WaterwayRoutePlannerResponseDirectionFeature();                        
+                        WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureTemp = new WaterwayRoutePlannerResponseDirectionFeature();
+                        //waterwayRoutePlannerResponseDirectionFeatureTemp.compressedGeometry = currentSectionChannelNameList[0];
+                        waterwayRoutePlannerResponseDirectionFeatureTemp.compressedGeometry = TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
                         waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.length = directionAttributesLengthSum;
                         waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.time = "0";                        
                         waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.maneuverType = "esriDMTStraight";
@@ -350,7 +389,7 @@ namespace IWRPM
 
                         WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringTemp = new WaterwayRoutePlannerResponseDirectionFeatureString();
                         waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "1";
-                        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = currentSectionChannelNameList[0];
+                        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
 
                         if ((lastDirectionTraceWaterwayNode.waterNodeType == 4) && (currentDirectionTraceWaterwayNode.waterNodeType == 4) && (directionBridgeSum >= 1))
                         {
@@ -387,25 +426,26 @@ namespace IWRPM
                             var lastDirectionFeature = waterwayRoutePlannerResponseDirection.features[waterwayRoutePlannerResponseDirection.features.Count - 1];
 
                             waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "2";
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = lastDirectionTraceChannelName + ',' + currentSectionChannelNameList[0];
+                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = TransformChannelNameVoiceBroadcast(lastDirectionTraceChannelName) + ',' + TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
                         }
                         waterwayRoutePlannerResponseDirectionFeatureTemp.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringTemp);                        
                         
                         //记录该段feature的方位角值
                         waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.ETA = GetAzimuth(directionGeometry.geom[0], directionGeometry.geom[directionGeometry.geom.Count - 1]);
 
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = GetDirection(waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.ETA);
+                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = 0.0;
                         if (waterwayRoutePlannerResponseDirection.features.Count >= 2)
                         {
                             //记录该段feature起始点的转向角
                             var lastDirectionFeature = waterwayRoutePlannerResponseDirection.features[waterwayRoutePlannerResponseDirection.features.Count - 1];
                             var lastDirectionFeatureGemetrySecondLastCoordinate = lastDirectionFeature.geometry.geom[lastDirectionFeature.geometry.geom.Count - 2];
                             var steeringAngle = GetSteeringAngle(lastDirectionFeatureGemetrySecondLastCoordinate, directionGeometry.geom[0], directionGeometry.geom[1]);
-                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = steeringAngle.ToString();
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = steeringAngle;
                         }
 
                         waterwayRoutePlannerResponseDirectionFeatureTemp.geometry = directionGeometry;
                         waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureTemp);
+                        directionFeatureCount += 1;
 
                         //重置direction.feature记录变量
                         directionAttributesLengthSum = 0;
@@ -422,16 +462,21 @@ namespace IWRPM
 
                 }
                 WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStop = new WaterwayRoutePlannerResponseDirectionFeature();
+                waterwayRoutePlannerResponseDirectionFeatureStop.compressedGeometry = waterwayRoutePlannerResponseDirection.features[directionFeatureCount - 1].compressedGeometry;
                 WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringStop = new WaterwayRoutePlannerResponseDirectionFeatureString();
                 waterwayRoutePlannerResponseDirectionFeatureStop.attributes.length = 0;
                 waterwayRoutePlannerResponseDirectionFeatureStop.attributes.time = "0";
-                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = "Finish at " + waterwayGraph.m_dicWaterwayNode[goal].waterNodeName;
+                //waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = "Finish at " + waterwayGraph.m_dicWaterwayNode[goal].waterNodeName;
+                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = 0.0;
                 waterwayRoutePlannerResponseDirectionFeatureStop.attributes.ETA = 0.0;
                 waterwayRoutePlannerResponseDirectionFeatureStop.attributes.maneuverType = "esriDMTStop";
                 waterwayRoutePlannerResponseDirectionFeatureStop.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringStop);
                 waterwayRoutePlannerResponseDirectionFeatureStop.geometry.type = "point";
                 waterwayRoutePlannerResponseDirectionFeatureStop.geometry.geom.Add(waterwayGraph.m_dicWaterwayNode[goal].waterNodeCoordinate);
                 waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureStop);
+
+                //填写索引为0的DirectionFeature的所属航道
+                waterwayRoutePlannerResponseDirection.features[0].compressedGeometry = waterwayRoutePlannerResponseDirection.features[1].compressedGeometry;
 
                 waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(lastRouteTraceNodeCoordinate);
                 waterwayRoutePlannerResponseRoutesFeature.geometry.paths.Add(waterwayRoutePlannerResponseRoutesFeatureGeometryPath);
@@ -517,7 +562,9 @@ namespace IWRPM
             else
             {
                 WaterwayRoutePlannerResponse waterwayRoutePlannerResponse = new WaterwayRoutePlannerResponse();
-                waterwayRoutePlannerResponse.messages[0] = "Can not reach the destination ...";
+
+                var message = "Can not reach the destination ...";
+                waterwayRoutePlannerResponse.messages.Add(message);
 
                 return waterwayRoutePlannerResponse;
             }
@@ -655,7 +702,7 @@ namespace IWRPM
     {
         public double length { get; set; }
         public string time { get; set; }
-        public string text { get; set; }
+        public double text { get; set; }
         public double ETA { get; set; }
         public string arriveTimeUTC { get; set; }
         public string maneuverType { get; set; }
