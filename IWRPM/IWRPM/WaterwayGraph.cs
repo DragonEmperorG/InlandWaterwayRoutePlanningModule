@@ -18,7 +18,7 @@ namespace IWRPM
     public class WaterwayGraph
     {
         //readonly string _shpfileDatasetsPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Datasets");
-        readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets3";
+        readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets4";
         //readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\Issue02";
         #region WaterwayGraph Members
 
@@ -136,7 +136,7 @@ namespace IWRPM
                     }
                 }
                 _countNumRecordWaterwayNodeDatasets += 1;
-                //if (waterwayTopoNodeTemp.waterNodeID == "ZJ-0020")
+                //if (waterwayTopoNodeTemp.waterNodeID == "XJ2DZZ-0037")
                 //{
                 //    Console.WriteLine(waterwayTopoNodeTemp.waterNodeID);
                 //}
@@ -175,8 +175,8 @@ namespace IWRPM
                     {
                         case "WLIKID":
                             waterwayTopoLinkTemp.waterLinkID = _readerWaterwayLinkDatasets.GetString(i + 1);
-                            if (waterwayTopoLinkTemp.waterLinkID == "XJ3JKZ-0020-XJ3JKZ-0019")
-                                Console.WriteLine(waterwayTopoLinkTemp.waterLinkID);
+                            //if (waterwayTopoLinkTemp.waterLinkID == "XJ3JKZ-0020-XJ3JKZ-0019")
+                            //    Console.WriteLine(waterwayTopoLinkTemp.waterLinkID);
                             break;
                         case "UWNCOD":
                             waterwayTopoLinkTemp.upStreamWaterNodeID = _readerWaterwayLinkDatasets.GetString(i + 1);
@@ -197,6 +197,7 @@ namespace IWRPM
                             waterwayTopoLinkTemp.waterLinkType = _readerWaterwayLinkDatasets.GetInt32(i + 1);
                             break;
                         case "BLGCOD":
+                            waterwayTopoLinkTemp.bridgeReference = _readerWaterwayLinkDatasets.GetString(i + 1);
                             break;
                         case "BLGNAM":
                             waterwayTopoLinkTemp.channelName = _readerWaterwayLinkDatasets.GetString(i + 1);
@@ -226,6 +227,7 @@ namespace IWRPM
                             waterwayTopoLinkTemp.bridgeNumber = _readerWaterwayLinkDatasets.GetInt32(i + 1);
                             break;
                         case "BRGCOD":
+                            waterwayTopoLinkTemp.bridgeReference = _readerWaterwayLinkDatasets.GetString(i + 1);
                             break;
                         case "INFBRG":
                             waterwayTopoLinkTemp.bridgeInfomation = _readerWaterwayLinkDatasets.GetString(i + 1);
@@ -249,6 +251,7 @@ namespace IWRPM
                             waterwayTopoLinkTemp.lockNumber = _readerWaterwayLinkDatasets.GetInt32(i + 1);
                             break;
                         case "LOBCOD":
+                            waterwayTopoLinkTemp.lockReference = _readerWaterwayLinkDatasets.GetString(i + 1);
                             break;
                         case "LOBLVL":
                             waterwayTopoLinkTemp.lockClass = _readerWaterwayLinkDatasets.GetInt32(i + 1);

@@ -101,8 +101,19 @@ namespace IWRPM
 
         public string GetNearestWaterwayNodeByCoorninate(WaterwayGraph _graph, double[] _currentCoordinate)
         {
-            var nearestWaterwayNode = waterwayGeoKdBush.Around(_graph.waterwayNodeSpatialIndex, _currentCoordinate[0], _currentCoordinate[1], 1);
-            return nearestWaterwayNode[0].waterNodeID;
+            var nearestWaterwayNode = waterwayGeoKdBush.Around(_graph.waterwayNodeSpatialIndex, _currentCoordinate[0], _currentCoordinate[1], 5);
+            var nearestWaterwayNodeIDOnNet = nearestWaterwayNode[0].waterNodeID;
+            var waterwayNodeCandidateNumber = Math.Min(nearestWaterwayNode.Count, 5);
+            for (var i = 0; i < waterwayNodeCandidateNumber; i++)
+            {
+                if (nearestWaterwayNode[i].waterNodeType != 4)
+                {
+                    nearestWaterwayNodeIDOnNet = nearestWaterwayNode[i].waterNodeID;
+                    break;
+                }
+            }
+
+            return nearestWaterwayNodeIDOnNet;
         }
 
         public class ShapeNodeWithIndex

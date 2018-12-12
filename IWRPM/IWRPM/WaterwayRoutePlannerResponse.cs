@@ -179,26 +179,34 @@ namespace IWRPM
                 var goalCoordinate = waterwayGraph.m_dicWaterwayNode[goal].waterNodeCoordinate;
 
                 var currentResearchElement = goal;
-                do
+                if (channelRoutePlanner.cameFrom[currentResearchElement][1] != "START")
+                {
+                    do
+                    {
+                        routeResultsStack.Push(currentResearchElement);
+                        if (waterwayGraph.m_dicWaterwayNode[currentResearchElement].waterNodeType != 3)
+                            directionsNumber += 1;
+
+                        var currentResearchLinkElement = channelRoutePlanner.cameFrom[currentResearchElement][1];
+                        routeResultsStack.Push(currentResearchLinkElement);
+
+                        routeLength += waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].channelLength;
+
+                        if (waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].bridgeNumber != 0)
+                            bridgeNumber += waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].bridgeNumber;
+                        if (waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].lockNumber != 0)
+                            shipLockNumber += waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].lockNumber;
+
+                        currentResearchElement = channelRoutePlanner.cameFrom[currentResearchElement][0];
+                    }
+                    while (currentResearchElement != start);
+                }
+                //routeResultsStack.Push(currentResearchElement);
+                else
                 {
                     routeResultsStack.Push(currentResearchElement);
-                    if (waterwayGraph.m_dicWaterwayNode[currentResearchElement].waterNodeType != 3)
-                        directionsNumber += 1;
-
-                    var currentResearchLinkElement = channelRoutePlanner.cameFrom[currentResearchElement][1];
-                    routeResultsStack.Push(currentResearchLinkElement);
-
-                    routeLength += waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].channelLength;
-
-                    if (waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].bridgeNumber != 0)
-                        bridgeNumber += waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].bridgeNumber;
-                    if (waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].lockNumber != 0)
-                        shipLockNumber += waterwayGraph.m_dicWaterwayLink[currentResearchLinkElement].lockNumber;
-
-                    currentResearchElement = channelRoutePlanner.cameFrom[currentResearchElement][0];
                 }
-                while (currentResearchElement != start);
-                //routeResultsStack.Push(currentResearchElement);
+
 
                 WaterwayRoutePlannerResponse waterwayRoutePlannerResponse = new WaterwayRoutePlannerResponse();
                 WaterwayRoutePlannerResponseRoutes waterwayRoutePlannerResponseRoutes = new WaterwayRoutePlannerResponseRoutes();
@@ -219,7 +227,7 @@ namespace IWRPM
                 waterwayRoutePlannerResponseRoutesFeature.attributes.Bridge_Number = bridgeNumber.ToString();
                 waterwayRoutePlannerResponseRoutesFeature.attributes.ShipLock_Number = shipLockNumber.ToString();
 
-                int directionFeatureCount = 0;
+                var directionFeatureCount = 0;
 
                 WaterwayRoutePlannerResponseDirection waterwayRoutePlannerResponseDirection = new WaterwayRoutePlannerResponseDirection();
                 WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStart = new WaterwayRoutePlannerResponseDirectionFeature();
@@ -265,297 +273,402 @@ namespace IWRPM
                 waterwayRoutePlannerResponseDirection.summary.totalDriveTime = waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime;
 
 
-                int routeResultsStackCount = routeResultsStack.Count;
-                var lastRouteTraceNodeCoordinate = startCoordinate;
-                var lastDirectionTraceNodeID = start;
-                var lastDirectionTraceChannelName = "";
-                int directionBridgeSum = 0;
-                int directionShipLockSum = 0;
-                double directionAttributesLengthSum = 0.0;
-                List<string> currentSectionChannelNameList = new List<string>();
-                List<string> currentSectionBridgeNameList = new List<string>();
-                List<string> currentSectionShipLockNameList = new List<string>();
-                var directionGeometry = new WaterwayRoutePlannerResponseDirectionFeatureGeometry();
-
-                for (var i = 0; i < routeResultsStackCount; i += 2)
+                var routeResultsStackCountFirst = routeResultsStack.Count;
+                if (routeResultsStackCountFirst != 1)
                 {
-                    var currentRouteLinkResult = routeResultsStack.Pop();
+                    int routeResultsStackCount = routeResultsStack.Count;
+                    var lastRouteTraceNodeCoordinate = startCoordinate;
+                    var lastDirectionTraceNodeID = start;
+                    var lastDirectionTraceChannelName = "";
+                    int directionBridgeSum = 0;
+                    int directionShipLockSum = 0;
+                    double directionAttributesLengthSum = 0.0;
+                    List<string> currentSectionChannelNameList = new List<string>();
+                    List<string> currentSectionBridgeNameList = new List<string>();
+                    List<string> currentSectionShipLockNameList = new List<string>();
 
+                    List<WaterwayRoutePlannerResponseDirectionFeatureString> currentSectionStringList = new List<WaterwayRoutePlannerResponseDirectionFeatureString>();
 
-                    //if (currentRouteLinkResult == "DPSD2XNZ-9001-XJ2DZZ-0010")
-                    //{
-                    //    Console.WriteLine(currentRouteLinkResult);
-                    //}
+                    var directionGeometry = new WaterwayRoutePlannerResponseDirectionFeatureGeometry();
 
-
-                    var currentRouteLinkObject = waterwayGraph.m_dicWaterwayLink[currentRouteLinkResult];
-                    var currentRouteLinkCoordinatesObject = currentRouteLinkObject.channelGeometry;
-                    var currentRouteLinkCoordinatesObjectLength = currentRouteLinkCoordinatesObject.Length;
-                    var currentRouteLinkCoordinatesObjectChannelName = currentRouteLinkObject.channelName;
-                    var currentRouteLinkCoordinatesObjectBridgeName = currentRouteLinkObject.bridgeName;
-                    var currentRouteLinkCoordinatesObjectShipLockName = currentRouteLinkObject.lockName;
-                    if (!currentSectionChannelNameList.Contains(currentRouteLinkCoordinatesObjectChannelName))
+                    for (var i = 0; i < routeResultsStackCount; i += 2)
                     {
-                        currentSectionChannelNameList.Add(currentRouteLinkCoordinatesObjectChannelName);
-                    }
-                    if (currentRouteLinkObject.bridgeNumber != 0)
-                    {
-                        directionBridgeSum = directionBridgeSum + currentRouteLinkObject.bridgeNumber;
-                        if (!currentSectionBridgeNameList.Contains(currentRouteLinkCoordinatesObjectBridgeName))
+                        var currentRouteLinkResult = routeResultsStack.Pop();
+
+
+                        //if (currentRouteLinkResult == "DPSD2XNZ-9001-XJ2DZZ-0010")
+                        //{
+                        //    Console.WriteLine(currentRouteLinkResult);
+                        //}
+
+
+                        var currentRouteLinkObject = waterwayGraph.m_dicWaterwayLink[currentRouteLinkResult];
+                        var currentRouteLinkCoordinatesObject = currentRouteLinkObject.channelGeometry;
+                        var currentRouteLinkCoordinatesObjectLength = currentRouteLinkCoordinatesObject.Length;
+                        var currentRouteLinkCoordinatesObjectChannelName = currentRouteLinkObject.channelName;
+                        var currentRouteLinkCoordinatesObjectBridgeName = currentRouteLinkObject.bridgeName;
+                        var currentRouteLinkCoordinatesObjectShipLockName = currentRouteLinkObject.lockName;
+                        if (!currentSectionChannelNameList.Contains(currentRouteLinkCoordinatesObjectChannelName))
                         {
-                            currentSectionBridgeNameList.Add(currentRouteLinkCoordinatesObjectBridgeName);
+                            currentSectionChannelNameList.Add(currentRouteLinkCoordinatesObjectChannelName);                            
                         }
-                    }
-                    if (currentRouteLinkObject.lockNumber != 0)
-                    {
-                        directionShipLockSum = directionShipLockSum + currentRouteLinkObject.lockNumber;
-                        if (!currentSectionShipLockNameList.Contains(currentRouteLinkCoordinatesObjectShipLockName))
+                        if (currentRouteLinkObject.bridgeNumber != 0)
                         {
-                            currentSectionShipLockNameList.Add(currentRouteLinkCoordinatesObjectShipLockName);
-                        }
-                    }
-
-                    //处理该Section的几何属性
-                    waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(lastRouteTraceNodeCoordinate);
-                    directionGeometry.geom.Add(lastRouteTraceNodeCoordinate);
-                    if (IsSameCoordinate(lastRouteTraceNodeCoordinate, new double[2] { currentRouteLinkCoordinatesObject[0].X, currentRouteLinkCoordinatesObject[0].Y }))
-                    {
-                        for (var j = 1; j < currentRouteLinkCoordinatesObjectLength - 1; j++)
-                        {
-                            waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
-                            directionGeometry.geom.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
-                            if (currentRouteLinkCoordinatesObject[j].X > waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax)
+                            directionBridgeSum = directionBridgeSum + currentRouteLinkObject.bridgeNumber;
+                            if (!currentSectionBridgeNameList.Contains(currentRouteLinkCoordinatesObjectBridgeName))
                             {
-                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax = currentRouteLinkCoordinatesObject[j].X;
+                                currentSectionBridgeNameList.Add(currentRouteLinkCoordinatesObjectBridgeName);
+
+                                var directionFeatureStringTemp = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                                var currentRouteLinkObjectGeometry = currentRouteLinkObject.channelGeometry;
+                                var currentRouteLinkObjectGeometryLength = currentRouteLinkObjectGeometry.Length;
+                                var currentBridgeLinkCoordinateStart = new double[2] { currentRouteLinkObjectGeometry[0].X, currentRouteLinkObjectGeometry[0].Y };
+                                var currentBridgeLinkCoordinateEnd = new double[2] { currentRouteLinkObjectGeometry[currentRouteLinkObjectGeometryLength - 1].X, currentRouteLinkObjectGeometry[currentRouteLinkObjectGeometryLength - 1].Y };
+
+                                if (currentRouteLinkCoordinatesObjectBridgeName == null)
+                                {
+                                    directionFeatureStringTemp.@string = "桥梁数据缺失";
+                                }
+                                else {
+                                    directionFeatureStringTemp.@string = currentRouteLinkCoordinatesObjectBridgeName;
+                                }
+                                
+                                directionFeatureStringTemp.stringType = "4";
+
+                                var currentRouteLinkObjectBridgeReference = currentRouteLinkObject.bridgeReference;
+                                if (currentRouteLinkObjectBridgeReference != "")
+                                {
+                                    var currentRouteLinkObjectBridgeReferenceCode = currentRouteLinkObjectBridgeReference.Split(',');
+                                    directionFeatureStringTemp.geom = waterwayGraph.m_dicWaterwayNode[currentRouteLinkObjectBridgeReferenceCode[0]].waterNodeCoordinate;
+                                }
+                                else
+                                {
+                                    
+                                    var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude = (currentBridgeLinkCoordinateStart[0] + currentBridgeLinkCoordinateEnd[0]) / 2.0;
+                                    var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude = (currentBridgeLinkCoordinateStart[1] + currentBridgeLinkCoordinateEnd[1]) / 2.0;
+                                    directionFeatureStringTemp.geom[0] = waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude;
+                                    directionFeatureStringTemp.geom[1] = waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude;
+                                }
+
+                                directionFeatureStringTemp.length = directionAttributesLengthSum + GetDistanceByCoordinate(currentBridgeLinkCoordinateStart, directionFeatureStringTemp.geom);
+
+                                currentSectionStringList.Add(directionFeatureStringTemp);
+                                currentSectionBridgeNameList.Add(currentRouteLinkCoordinatesObjectBridgeName);
                             }
-                            if (currentRouteLinkCoordinatesObject[j].X < waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin)
+                        }
+                        if (currentRouteLinkObject.lockNumber != 0)
+                        {
+                            directionShipLockSum = directionShipLockSum + currentRouteLinkObject.lockNumber;
+                            if (!currentSectionShipLockNameList.Contains(currentRouteLinkCoordinatesObjectShipLockName))
                             {
-                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin = currentRouteLinkCoordinatesObject[j].X;
+                                currentSectionShipLockNameList.Add(currentRouteLinkCoordinatesObjectShipLockName);
+                                var directionFeatureStringTemp = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                                var currentRouteLinkObjectGeometry = currentRouteLinkObject.channelGeometry;
+                                var currentRouteLinkObjectGeometryLength = currentRouteLinkObjectGeometry.Length;
+                                var currentLockLinkCoordinateStart = new double[2] { currentRouteLinkObjectGeometry[0].X, currentRouteLinkObjectGeometry[0].Y };
+                                var currentLockLinkCoordinateEnd = new double[2] { currentRouteLinkObjectGeometry[currentRouteLinkObjectGeometryLength - 1].X, currentRouteLinkObjectGeometry[currentRouteLinkObjectGeometryLength - 1].Y };
+
+                                directionFeatureStringTemp.@string = currentRouteLinkCoordinatesObjectShipLockName;
+                                directionFeatureStringTemp.stringType = "5";
+
+                                var currentRouteLinkObjectLockReference = currentRouteLinkObject.lockReference;
+                                if (currentRouteLinkObjectLockReference != "")
+                                {
+                                    directionFeatureStringTemp.geom = waterwayGraph.m_dicWaterwayNode[currentRouteLinkObjectLockReference].waterNodeCoordinate;
+                                }
+                                else
+                                {
+
+                                    var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude = (currentLockLinkCoordinateStart[0] + currentLockLinkCoordinateEnd[0]) / 2.0;
+                                    var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude = (currentLockLinkCoordinateStart[1] + currentLockLinkCoordinateEnd[1]) / 2.0;
+                                    directionFeatureStringTemp.geom[0] = waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude;
+                                    directionFeatureStringTemp.geom[1] = waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude;
+                                }
+
+                                directionFeatureStringTemp.length = directionAttributesLengthSum + GetDistanceByCoordinate(currentLockLinkCoordinateStart, directionFeatureStringTemp.geom);
+
+                                currentSectionStringList.Add(directionFeatureStringTemp);
                             }
-                            if (currentRouteLinkCoordinatesObject[j].Y > waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax)
-                            {
-                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax = currentRouteLinkCoordinatesObject[j].Y;
-                            }
-                            if (currentRouteLinkCoordinatesObject[j].Y < waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin)
-                            {
-                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin = currentRouteLinkCoordinatesObject[j].Y;
-                            }
                         }
-                        lastRouteTraceNodeCoordinate = new double[2] { currentRouteLinkCoordinatesObject[currentRouteLinkCoordinatesObjectLength - 1].X, currentRouteLinkCoordinatesObject[currentRouteLinkCoordinatesObjectLength - 1].Y };
-                        if (lastRouteTraceNodeCoordinate[0] > waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax)
-                        {
-                            waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax = lastRouteTraceNodeCoordinate[0];
-                        }
-                        if (lastRouteTraceNodeCoordinate[0] < waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin)
-                        {
-                            waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin = lastRouteTraceNodeCoordinate[0];
-                        }
-                        if (lastRouteTraceNodeCoordinate[1] > waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax)
-                        {
-                            waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax = lastRouteTraceNodeCoordinate[1];
-                        }
-                        if (lastRouteTraceNodeCoordinate[1] < waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin)
-                        {
-                            waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin = lastRouteTraceNodeCoordinate[1];
-                        }
-                    }
-                    else
-                    {
-                        for (var j = currentRouteLinkCoordinatesObjectLength - 2; j > 0; j--)
-                        {
-                            waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
-                            directionGeometry.geom.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
-                        }
-                        lastRouteTraceNodeCoordinate = new double[2] { currentRouteLinkCoordinatesObject[0].X, currentRouteLinkCoordinatesObject[0].Y };
-                    }
 
-                    //处理该Section的线路长度属性
-                    directionAttributesLengthSum += waterwayGraph.m_dicWaterwayLink[currentRouteLinkResult].channelLength;
-
-                    var currentRouteNodeResult = routeResultsStack.Pop();
-                    if (waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult].waterNodeType != 3)
-                    {
-                        var lastDirectionTraceWaterwayNode = waterwayGraph.m_dicWaterwayNode[lastDirectionTraceNodeID];
-                        var currentDirectionTraceWaterwayNode = waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult];
-
-
-                        WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureTemp = new WaterwayRoutePlannerResponseDirectionFeature();
-                        //waterwayRoutePlannerResponseDirectionFeatureTemp.compressedGeometry = currentSectionChannelNameList[0];
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.compressedGeometry = TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.length = directionAttributesLengthSum;
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.time = "0";                        
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.maneuverType = "esriDMTStraight";
+                        //处理该Section的几何属性
+                        waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(lastRouteTraceNodeCoordinate);
                         directionGeometry.geom.Add(lastRouteTraceNodeCoordinate);
-
-                        WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringTemp = new WaterwayRoutePlannerResponseDirectionFeatureString();
-                        waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "1";
-                        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
-
-                        if ((lastDirectionTraceWaterwayNode.waterNodeType == 4) && (currentDirectionTraceWaterwayNode.waterNodeType == 4) && (directionBridgeSum >= 1))
+                        if (IsSameCoordinate(lastRouteTraceNodeCoordinate, new double[2] { currentRouteLinkCoordinatesObject[0].X, currentRouteLinkCoordinatesObject[0].Y }))
                         {
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "4";
-                            if (currentSectionBridgeNameList.Count == 0)
+                            for (var j = 1; j < currentRouteLinkCoordinatesObjectLength - 1; j++)
                             {
-                                waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = "桥梁名称数据缺失";
+                                waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
+                                directionGeometry.geom.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
+                                if (currentRouteLinkCoordinatesObject[j].X > waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax)
+                                {
+                                    waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax = currentRouteLinkCoordinatesObject[j].X;
+                                }
+                                if (currentRouteLinkCoordinatesObject[j].X < waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin)
+                                {
+                                    waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin = currentRouteLinkCoordinatesObject[j].X;
+                                }
+                                if (currentRouteLinkCoordinatesObject[j].Y > waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax)
+                                {
+                                    waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax = currentRouteLinkCoordinatesObject[j].Y;
+                                }
+                                if (currentRouteLinkCoordinatesObject[j].Y < waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin)
+                                {
+                                    waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin = currentRouteLinkCoordinatesObject[j].Y;
+                                }
                             }
-                            else
+                            lastRouteTraceNodeCoordinate = new double[2] { currentRouteLinkCoordinatesObject[currentRouteLinkCoordinatesObjectLength - 1].X, currentRouteLinkCoordinatesObject[currentRouteLinkCoordinatesObjectLength - 1].Y };
+                            if (lastRouteTraceNodeCoordinate[0] > waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax)
                             {
-                                waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = currentSectionBridgeNameList[0];
+                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmax = lastRouteTraceNodeCoordinate[0];
                             }
-                            var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude = (directionGeometry.geom[0][0] + lastRouteTraceNodeCoordinate[0]) / 2.0;
-                            var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude = (directionGeometry.geom[0][1] + lastRouteTraceNodeCoordinate[1]) / 2.0;
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.geom = new double[2] { waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude, waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude };
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.length = GetDistanceByCoordinate(directionGeometry.geom[0], waterwayRoutePlannerResponseDirectionFeatureStringTemp.geom);
+                            if (lastRouteTraceNodeCoordinate[0] < waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin)
+                            {
+                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.xmin = lastRouteTraceNodeCoordinate[0];
+                            }
+                            if (lastRouteTraceNodeCoordinate[1] > waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax)
+                            {
+                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymax = lastRouteTraceNodeCoordinate[1];
+                            }
+                            if (lastRouteTraceNodeCoordinate[1] < waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin)
+                            {
+                                waterwayRoutePlannerResponseDirectionSummaryEnvelope.ymin = lastRouteTraceNodeCoordinate[1];
+                            }
+                        }
+                        else
+                        {
+                            for (var j = currentRouteLinkCoordinatesObjectLength - 2; j > 0; j--)
+                            {
+                                waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
+                                directionGeometry.geom.Add(new double[2] { currentRouteLinkCoordinatesObject[j].X, currentRouteLinkCoordinatesObject[j].Y });
+                            }
+                            lastRouteTraceNodeCoordinate = new double[2] { currentRouteLinkCoordinatesObject[0].X, currentRouteLinkCoordinatesObject[0].Y };
                         }
 
-                        if ((lastDirectionTraceWaterwayNode.waterNodeType == 5) && (currentDirectionTraceWaterwayNode.waterNodeType == 5) && (directionShipLockSum >= 1))
+                        //处理该Section的线路长度属性
+                        directionAttributesLengthSum += waterwayGraph.m_dicWaterwayLink[currentRouteLinkResult].channelLength;
+
+                        var currentRouteNodeResult = routeResultsStack.Pop();
+                        if (waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult].waterNodeType == 2 || waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult].waterNodeID == goal)
                         {
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "5";
-                            if (currentSectionShipLockNameList.Count == 0)
+                            var lastDirectionTraceWaterwayNode = waterwayGraph.m_dicWaterwayNode[lastDirectionTraceNodeID];
+                            var currentDirectionTraceWaterwayNode = waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult];
+
+
+                            WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureTemp = new WaterwayRoutePlannerResponseDirectionFeature();
+                            //waterwayRoutePlannerResponseDirectionFeatureTemp.compressedGeometry = currentSectionChannelNameList[0];
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.compressedGeometry = TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.length = directionAttributesLengthSum;
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.time = "0";
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.maneuverType = "esriDMTStraight";
+                            directionGeometry.geom.Add(lastRouteTraceNodeCoordinate);
+
+                            //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringTemp = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                            //waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "1";
+                            //waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
+
+                            //if ((lastDirectionTraceWaterwayNode.waterNodeType == 4) && (currentDirectionTraceWaterwayNode.waterNodeType == 4) && (directionBridgeSum >= 1))
+                            //{
+                            //    waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "4";
+                            //    if (currentSectionBridgeNameList.Count == 0)
+                            //    {
+                            //        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = "桥梁名称数据缺失";
+                            //    }
+                            //    else
+                            //    {
+                            //        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = currentSectionBridgeNameList[0];
+                            //    }
+                            //    var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude = (directionGeometry.geom[0][0] + lastRouteTraceNodeCoordinate[0]) / 2.0;
+                            //    var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude = (directionGeometry.geom[0][1] + lastRouteTraceNodeCoordinate[1]) / 2.0;
+                            //    waterwayRoutePlannerResponseDirectionFeatureStringTemp.geom = new double[2] { waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude, waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude };
+                            //    waterwayRoutePlannerResponseDirectionFeatureStringTemp.length = GetDistanceByCoordinate(directionGeometry.geom[0], waterwayRoutePlannerResponseDirectionFeatureStringTemp.geom);
+                            //}
+
+                            //if ((lastDirectionTraceWaterwayNode.waterNodeType == 5) && (currentDirectionTraceWaterwayNode.waterNodeType == 5) && (directionShipLockSum >= 1))
+                            //{
+                            //    waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "5";
+                            //    if (currentSectionShipLockNameList.Count == 0)
+                            //    {
+                            //        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = "船闸名称数据缺失";
+                            //    }
+                            //    else
+                            //    {
+                            //        waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = currentSectionShipLockNameList[0];
+                            //    }
+                            //}
+
+                            //if (lastDirectionTraceWaterwayNode.waterNodeType == 2 || (lastDirectionTraceWaterwayNode.waterNodeType == 1 && lastDirectionTraceWaterwayNode.waterLinkOutNumber >= 3))
+                            //{
+                            //    var lastDirectionFeature = waterwayRoutePlannerResponseDirection.features[waterwayRoutePlannerResponseDirection.features.Count - 1];
+
+                            //    waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "2";
+                            //    waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = TransformChannelNameVoiceBroadcast(lastDirectionTraceChannelName) + ',' + TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
+                            //}
+
+
+                            var currentSectionStringListCount = currentSectionStringList.Count;
+                            for (var k = 0; k < currentSectionStringListCount; k++)
                             {
-                                waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = "船闸名称数据缺失";
+                                waterwayRoutePlannerResponseDirectionFeatureTemp.strings.Add(currentSectionStringList[k]);
                             }
-                            else
+
+                            //记录该段feature的方位角值
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.ETA = GetAzimuth(directionGeometry.geom[0], directionGeometry.geom[directionGeometry.geom.Count - 1]);
+
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = 0.0;
+                            if (waterwayRoutePlannerResponseDirection.features.Count >= 2)
                             {
-                                waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = currentSectionShipLockNameList[0];
+                                //记录该段feature起始点的转向角
+                                var lastDirectionFeature = waterwayRoutePlannerResponseDirection.features[waterwayRoutePlannerResponseDirection.features.Count - 1];
+                                var lastDirectionFeatureGemetrySecondLastCoordinate = lastDirectionFeature.geometry.geom[lastDirectionFeature.geometry.geom.Count - 2];
+                                var steeringAngle = GetSteeringAngle(lastDirectionFeatureGemetrySecondLastCoordinate, directionGeometry.geom[0], directionGeometry.geom[1]);
+                                waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = steeringAngle;
                             }
+
+                            waterwayRoutePlannerResponseDirectionFeatureTemp.geometry = directionGeometry;
+                            waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureTemp);
+                            directionFeatureCount += 1;
+
+                            //重置direction.feature记录变量
+                            directionAttributesLengthSum = 0;
+                            directionGeometry = WaterwayRoutePlannerResponseDirectionFeatureGeometry.ConstructNewInstanceFromExistClass(new WaterwayRoutePlannerResponseDirectionFeatureGeometry());
+                            lastDirectionTraceNodeID = currentRouteNodeResult;
+                            lastDirectionTraceChannelName = currentSectionChannelNameList[0];
+                            directionBridgeSum = 0;
+                            directionShipLockSum = 0;
+                            currentSectionChannelNameList.Clear();
+                            currentSectionBridgeNameList.Clear();
+                            currentSectionShipLockNameList.Clear();
+                            currentSectionStringList.Clear();
                         }
 
-                        if (lastDirectionTraceWaterwayNode.waterNodeType == 2 || (lastDirectionTraceWaterwayNode.waterNodeType == 1 && lastDirectionTraceWaterwayNode.waterLinkOutNumber >= 3))
-                        {
-                            var lastDirectionFeature = waterwayRoutePlannerResponseDirection.features[waterwayRoutePlannerResponseDirection.features.Count - 1];
 
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.stringType = "2";
-                            waterwayRoutePlannerResponseDirectionFeatureStringTemp.@string = TransformChannelNameVoiceBroadcast(lastDirectionTraceChannelName) + ',' + TransformChannelNameVoiceBroadcast(currentSectionChannelNameList[0]);
-                        }
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringTemp);                        
-                        
-                        //记录该段feature的方位角值
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.ETA = GetAzimuth(directionGeometry.geom[0], directionGeometry.geom[directionGeometry.geom.Count - 1]);
-
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = 0.0;
-                        if (waterwayRoutePlannerResponseDirection.features.Count >= 2)
-                        {
-                            //记录该段feature起始点的转向角
-                            var lastDirectionFeature = waterwayRoutePlannerResponseDirection.features[waterwayRoutePlannerResponseDirection.features.Count - 1];
-                            var lastDirectionFeatureGemetrySecondLastCoordinate = lastDirectionFeature.geometry.geom[lastDirectionFeature.geometry.geom.Count - 2];
-                            var steeringAngle = GetSteeringAngle(lastDirectionFeatureGemetrySecondLastCoordinate, directionGeometry.geom[0], directionGeometry.geom[1]);
-                            waterwayRoutePlannerResponseDirectionFeatureTemp.attributes.text = steeringAngle;
-                        }
-
-                        waterwayRoutePlannerResponseDirectionFeatureTemp.geometry = directionGeometry;
-                        waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureTemp);
-                        directionFeatureCount += 1;
-
-                        //重置direction.feature记录变量
-                        directionAttributesLengthSum = 0;
-                        directionGeometry = WaterwayRoutePlannerResponseDirectionFeatureGeometry.ConstructNewInstanceFromExistClass(new WaterwayRoutePlannerResponseDirectionFeatureGeometry());
-                        lastDirectionTraceNodeID = currentRouteNodeResult;
-                        lastDirectionTraceChannelName = currentSectionChannelNameList[0];
-                        directionBridgeSum = 0;
-                        directionShipLockSum = 0;
-                        currentSectionChannelNameList.Clear();
-                        currentSectionBridgeNameList.Clear();
-                        currentSectionShipLockNameList.Clear();
                     }
+                    WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStop = new WaterwayRoutePlannerResponseDirectionFeature();
+                    waterwayRoutePlannerResponseDirectionFeatureStop.compressedGeometry = waterwayRoutePlannerResponseDirection.features[directionFeatureCount - 1].compressedGeometry;
+                    WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringStop = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.length = 0;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.time = "0";
+                    //waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = "Finish at " + waterwayGraph.m_dicWaterwayNode[goal].waterNodeName;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = 0.0;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.ETA = 0.0;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.maneuverType = "esriDMTStop";
+                    waterwayRoutePlannerResponseDirectionFeatureStop.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringStop);
+                    waterwayRoutePlannerResponseDirectionFeatureStop.geometry.type = "point";
+                    waterwayRoutePlannerResponseDirectionFeatureStop.geometry.geom.Add(waterwayGraph.m_dicWaterwayNode[goal].waterNodeCoordinate);
+                    waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureStop);
 
+                    //填写索引为0的DirectionFeature的所属航道
+                    waterwayRoutePlannerResponseDirection.features[0].compressedGeometry = waterwayRoutePlannerResponseDirection.features[1].compressedGeometry;
+
+                    waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(lastRouteTraceNodeCoordinate);
+                    waterwayRoutePlannerResponseRoutesFeature.geometry.paths.Add(waterwayRoutePlannerResponseRoutesFeatureGeometryPath);
+                    waterwayRoutePlannerResponseRoutes.features.Add(waterwayRoutePlannerResponseRoutesFeature);
+
+
+                    // 临时返回测试用备选方案测试数据
+                    //var waterwayRoutePlannerResponseRoutesFeatureAlternative = new WaterwayRoutePlannerResponseRoutesFeature();
+                    //List<double[]> waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath = new List<double[]>();
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.ObjectID = "2";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Name = "测试备选规划路线";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.FirstStopID = "测试起始点";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.LastStopID = "测试目标点";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.StopCount = "8";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Total_TravelTime = "3600.0";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.StartTime = "0";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.EndTime = "360000";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.StartTimeUTC = "30000000";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.EndTimeUTC = "30360000";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Shape_Length = "100000";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Bridge_Number = "10";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.ShipLock_Number = "5";
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath.Add(startCoordinate);
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath.Add(goalCoordinate);
+                    //waterwayRoutePlannerResponseRoutesFeatureAlternative.geometry.paths.Add(waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath);
+                    //waterwayRoutePlannerResponseRoutes.features.Add(waterwayRoutePlannerResponseRoutesFeatureAlternative);
+
+                    //WaterwayRoutePlannerResponseDirection waterwayRoutePlannerResponseDirectionAlternative = new WaterwayRoutePlannerResponseDirection();
+                    //waterwayRoutePlannerResponseDirectionAlternative.routeId = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.ObjectID;
+                    //waterwayRoutePlannerResponseDirectionAlternative.routeName = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Name;
+                    //waterwayRoutePlannerResponseDirectionAlternative.summary.totalLength = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Shape_Length;
+                    //waterwayRoutePlannerResponseDirectionAlternative.summary.totalTime = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Total_TravelTime;
+                    //waterwayRoutePlannerResponseDirection.summary.totalDriveTime = waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime;
+
+                    //WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionAlternativeFeatureStart = new WaterwayRoutePlannerResponseDirectionFeature();
+                    //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionAlternativeFeatureStringStart = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.length = 0;
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.time = "0";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.text = "Start at 测试起始点";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.ETA = 0.0;
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.maneuverType = "esriDMTDepart";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.geometry.type = "point";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.geometry.geom.Add(startCoordinate);
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.strings.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStringStart);
+                    //waterwayRoutePlannerResponseDirectionAlternative.features.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStart);
+
+                    //WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection = new WaterwayRoutePlannerResponseDirectionFeature();
+                    //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionAlternativeFeatureStringDirectConnection = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.length = 10;
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.time = "10";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.text = "End at 测试目标点";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.ETA = 0.0;
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.maneuverType = "esriDMTStop";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.geometry.type = "polyline";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.geometry.geom.Add(startCoordinate);
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.geometry.geom.Add(goalCoordinate);
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.strings.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStringDirectConnection);
+                    //waterwayRoutePlannerResponseDirectionAlternative.features.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection);
+
+                    //WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal = new WaterwayRoutePlannerResponseDirectionFeature();
+                    //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionAlternativeFeatureStringGoal = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.length = 10;
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.time = "10";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.text = "End at 测试目标点";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.ETA = 0.0;
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.maneuverType = "esriDMTStop";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.geometry.type = "point";
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.geometry.geom.Add(goalCoordinate);
+                    //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.strings.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStringGoal);
+                    //waterwayRoutePlannerResponseDirectionAlternative.features.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal);
+
+
+
+
+
+                    waterwayRoutePlannerResponseDirection.summary.envelope = waterwayRoutePlannerResponseDirectionSummaryEnvelope;
+                    waterwayRoutePlannerResponse.directions.Add(waterwayRoutePlannerResponseDirection);
+                    //waterwayRoutePlannerResponse.directions.Add(waterwayRoutePlannerResponseDirectionAlternative);
+                    waterwayRoutePlannerResponse.routes = waterwayRoutePlannerResponseRoutes;
+                }
+                else
+                {
+                    WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStop = new WaterwayRoutePlannerResponseDirectionFeature();
+                    waterwayRoutePlannerResponseDirectionFeatureStop.compressedGeometry = waterwayRoutePlannerResponseDirection.features[directionFeatureCount - 1].compressedGeometry;
+                    WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringStop = new WaterwayRoutePlannerResponseDirectionFeatureString();
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.length = 0;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.time = "0";
+                    //waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = "Finish at " + waterwayGraph.m_dicWaterwayNode[goal].waterNodeName;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = 0.0;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.ETA = 0.0;
+                    waterwayRoutePlannerResponseDirectionFeatureStop.attributes.maneuverType = "esriDMTStop";
+                    waterwayRoutePlannerResponseDirectionFeatureStop.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringStop);
+                    waterwayRoutePlannerResponseDirectionFeatureStop.geometry.type = "point";
+                    waterwayRoutePlannerResponseDirectionFeatureStop.geometry.geom.Add(waterwayGraph.m_dicWaterwayNode[goal].waterNodeCoordinate);
+                    waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureStop);
+
+                    //填写索引为0的DirectionFeature的所属航道
+                    waterwayRoutePlannerResponseDirection.features[0].compressedGeometry = waterwayRoutePlannerResponseDirection.features[1].compressedGeometry;
+
+                    waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(startCoordinate);
+                    waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(goalCoordinate);
+                    waterwayRoutePlannerResponseRoutesFeature.geometry.paths.Add(waterwayRoutePlannerResponseRoutesFeatureGeometryPath);
+                    waterwayRoutePlannerResponseRoutes.features.Add(waterwayRoutePlannerResponseRoutesFeature);
+
+                    waterwayRoutePlannerResponseDirection.summary.envelope = waterwayRoutePlannerResponseDirectionSummaryEnvelope;
+                    waterwayRoutePlannerResponse.directions.Add(waterwayRoutePlannerResponseDirection);
+                    waterwayRoutePlannerResponse.routes = waterwayRoutePlannerResponseRoutes;
 
                 }
-                WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStop = new WaterwayRoutePlannerResponseDirectionFeature();
-                waterwayRoutePlannerResponseDirectionFeatureStop.compressedGeometry = waterwayRoutePlannerResponseDirection.features[directionFeatureCount - 1].compressedGeometry;
-                WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionFeatureStringStop = new WaterwayRoutePlannerResponseDirectionFeatureString();
-                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.length = 0;
-                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.time = "0";
-                //waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = "Finish at " + waterwayGraph.m_dicWaterwayNode[goal].waterNodeName;
-                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.text = 0.0;
-                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.ETA = 0.0;
-                waterwayRoutePlannerResponseDirectionFeatureStop.attributes.maneuverType = "esriDMTStop";
-                waterwayRoutePlannerResponseDirectionFeatureStop.strings.Add(waterwayRoutePlannerResponseDirectionFeatureStringStop);
-                waterwayRoutePlannerResponseDirectionFeatureStop.geometry.type = "point";
-                waterwayRoutePlannerResponseDirectionFeatureStop.geometry.geom.Add(waterwayGraph.m_dicWaterwayNode[goal].waterNodeCoordinate);
-                waterwayRoutePlannerResponseDirection.features.Add(waterwayRoutePlannerResponseDirectionFeatureStop);
-
-                //填写索引为0的DirectionFeature的所属航道
-                waterwayRoutePlannerResponseDirection.features[0].compressedGeometry = waterwayRoutePlannerResponseDirection.features[1].compressedGeometry;
-
-                waterwayRoutePlannerResponseRoutesFeatureGeometryPath.Add(lastRouteTraceNodeCoordinate);
-                waterwayRoutePlannerResponseRoutesFeature.geometry.paths.Add(waterwayRoutePlannerResponseRoutesFeatureGeometryPath);
-                waterwayRoutePlannerResponseRoutes.features.Add(waterwayRoutePlannerResponseRoutesFeature);
-
-
-                // 临时返回测试用备选方案测试数据
-                //var waterwayRoutePlannerResponseRoutesFeatureAlternative = new WaterwayRoutePlannerResponseRoutesFeature();
-                //List<double[]> waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath = new List<double[]>();
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.ObjectID = "2";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Name = "测试备选规划路线";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.FirstStopID = "测试起始点";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.LastStopID = "测试目标点";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.StopCount = "8";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Total_TravelTime = "3600.0";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.StartTime = "0";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.EndTime = "360000";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.StartTimeUTC = "30000000";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.EndTimeUTC = "30360000";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Shape_Length = "100000";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Bridge_Number = "10";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.ShipLock_Number = "5";
-                //waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath.Add(startCoordinate);
-                //waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath.Add(goalCoordinate);
-                //waterwayRoutePlannerResponseRoutesFeatureAlternative.geometry.paths.Add(waterwayRoutePlannerResponseRoutesFeatureAlternativeGeometryPath);
-                //waterwayRoutePlannerResponseRoutes.features.Add(waterwayRoutePlannerResponseRoutesFeatureAlternative);
-
-                //WaterwayRoutePlannerResponseDirection waterwayRoutePlannerResponseDirectionAlternative = new WaterwayRoutePlannerResponseDirection();
-                //waterwayRoutePlannerResponseDirectionAlternative.routeId = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.ObjectID;
-                //waterwayRoutePlannerResponseDirectionAlternative.routeName = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Name;
-                //waterwayRoutePlannerResponseDirectionAlternative.summary.totalLength = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Shape_Length;
-                //waterwayRoutePlannerResponseDirectionAlternative.summary.totalTime = waterwayRoutePlannerResponseRoutesFeatureAlternative.attributes.Total_TravelTime;
-                //waterwayRoutePlannerResponseDirection.summary.totalDriveTime = waterwayRoutePlannerResponseRoutesFeature.attributes.Total_TravelTime;
-
-                //WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionAlternativeFeatureStart = new WaterwayRoutePlannerResponseDirectionFeature();
-                //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionAlternativeFeatureStringStart = new WaterwayRoutePlannerResponseDirectionFeatureString();
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.length = 0;
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.time = "0";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.text = "Start at 测试起始点";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.ETA = 0.0;
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.attributes.maneuverType = "esriDMTDepart";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.geometry.type = "point";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.geometry.geom.Add(startCoordinate);
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureStart.strings.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStringStart);
-                //waterwayRoutePlannerResponseDirectionAlternative.features.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStart);
-
-                //WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection = new WaterwayRoutePlannerResponseDirectionFeature();
-                //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionAlternativeFeatureStringDirectConnection = new WaterwayRoutePlannerResponseDirectionFeatureString();
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.length = 10;
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.time = "10";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.text = "End at 测试目标点";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.ETA = 0.0;
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.attributes.maneuverType = "esriDMTStop";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.geometry.type = "polyline";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.geometry.geom.Add(startCoordinate);
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.geometry.geom.Add(goalCoordinate);
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection.strings.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStringDirectConnection);
-                //waterwayRoutePlannerResponseDirectionAlternative.features.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureDirectConnection);
-
-                //WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal = new WaterwayRoutePlannerResponseDirectionFeature();
-                //WaterwayRoutePlannerResponseDirectionFeatureString waterwayRoutePlannerResponseDirectionAlternativeFeatureStringGoal = new WaterwayRoutePlannerResponseDirectionFeatureString();
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.length = 10;
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.time = "10";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.text = "End at 测试目标点";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.ETA = 0.0;
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.attributes.maneuverType = "esriDMTStop";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.geometry.type = "point";
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.geometry.geom.Add(goalCoordinate);
-                //waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal.strings.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureStringGoal);
-                //waterwayRoutePlannerResponseDirectionAlternative.features.Add(waterwayRoutePlannerResponseDirectionAlternativeFeatureGoal);
-
-
-
-
-
-                waterwayRoutePlannerResponseDirection.summary.envelope = waterwayRoutePlannerResponseDirectionSummaryEnvelope;
-                waterwayRoutePlannerResponse.directions.Add(waterwayRoutePlannerResponseDirection);
-                //waterwayRoutePlannerResponse.directions.Add(waterwayRoutePlannerResponseDirectionAlternative);
-                waterwayRoutePlannerResponse.routes = waterwayRoutePlannerResponseRoutes;
 
                 return waterwayRoutePlannerResponse;
             }
@@ -700,11 +813,15 @@ namespace IWRPM
 
     public class WaterwayRoutePlannerResponseDirectionFeatureAttributes
     {
+        // 存储该段 feature 几何长度
         public double length { get; set; }
         public string time { get; set; }
+        // 转向角
         public double text { get; set; }
+        // 方位角
         public double ETA { get; set; }
         public string arriveTimeUTC { get; set; }
+        // 
         public string maneuverType { get; set; }
 
         public WaterwayRoutePlannerResponseDirectionFeatureAttributes()
@@ -715,9 +832,12 @@ namespace IWRPM
 
     public class WaterwayRoutePlannerResponseDirectionFeatureString
     {
+        // 标识该提示点的名称
         public string @string { get; set; } = "12:00 AM";
+        // 提示该段 feature 的一个string提示点
         public string stringType { get; set; } = "esriDSTEstimatedArrivalTime";
-        public double[] geom { get; set; }
+        // 标识该提示点的坐标
+        public double[] geom { get; set; } = new double[2];
         public double length { get; set; } = 0.0;
 
         public WaterwayRoutePlannerResponseDirectionFeatureString()
@@ -728,7 +848,10 @@ namespace IWRPM
 
     public class WaterwayRoutePlannerResponseDirectionFeatureGeometry
     {
+        // 存储该段feature下的几何信息
+        // type 的可选项为 "point" 或者 "polyline"
         public string type { get; set; } = "polyline";
+        // geom 存储实际的点位坐标
         public List<double[]> geom { get; set; } = new List<double[]>();
 
         public WaterwayRoutePlannerResponseDirectionFeatureGeometry()

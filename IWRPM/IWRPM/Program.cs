@@ -83,12 +83,50 @@ namespace IWRPM
             //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
 
             //Issue02
-            var startWaterwayNodeCoordiante = new double[] { 112.676591, 23.167975 };
-            var goalWaterwayNodeCoordiante = new double[] { 112.6766, 23.1680 };
+            //var startWaterwayNodeCoordiante = new double[] { 112.676591, 23.167975 };
+            //var goalWaterwayNodeCoordiante = new double[] { 112.6766, 23.1680 };
+            //var guangDongChannelRoutePlanner2 = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);
+            //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner2, guangDongChannelRoutePlanner2.StartWaterwayNodeID, guangDongChannelRoutePlanner2.GoalWaterwayNodeID);
+            //var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
+            //OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
+
+            //Issue05
+            // 西江最西至崖门出海口
+            //var startWaterwayNodeCoordiante = new double[] { 111.457087, 23.455861 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.212279, 21.843785 };
+            // 谭江最西至崖门出海口
+            //var startWaterwayNodeCoordiante = new double[] { 112.694755, 22.364938 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.212279, 21.843785 };
+            //谭江最西至磨刀门水道最南
+            //var startWaterwayNodeCoordiante = new double[] { 112.694755, 22.364938 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.413707, 22.124383 };
+            // 西江最西至横门出海口
+            //var startWaterwayNodeCoordiante = new double[] { 111.457087, 23.455861 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.398222, 22.124757 };
+            // 北江至横门出海口
+            //var startWaterwayNodeCoordiante = new double[] { 113.516098, 24.390144 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.398222, 22.124757 };
+            // 东莞水道测试
+            //var startWaterwayNodeCoordiante = new double[] { 113.862678, 23.097168 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.562953, 22.881989 };
+            // Issue08 2018/12/11 14:57
+            //var startWaterwayNodeCoordiante = new double[] { 111.781822, 23.132036 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.057391, 23.689742 };
+            // Issue09 2018/12/12 09:38
+            //var startWaterwayNodeCoordiante = new double[] { 111.504180, 23.363275 };
+            //var goalWaterwayNodeCoordiante = new double[] { 111.523878, 23.329163 };
+            // Issue12 2018/12/12 14:40
+            var startWaterwayNodeCoordiante = new double[] { 113.087412, 22.219555 };
+            var goalWaterwayNodeCoordiante = new double[] { 113.111542, 22.648221 };
+
+
             var guangDongChannelRoutePlanner2 = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);
             OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner2, guangDongChannelRoutePlanner2.StartWaterwayNodeID, guangDongChannelRoutePlanner2.GoalWaterwayNodeID);
             var guangDongChannelRoutePlanner = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante);
-            OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);            
+            OutputRouteResults(guangDongWaterwayGraph, guangDongChannelRoutePlanner, guangDongChannelRoutePlanner.StartWaterwayNodeID, guangDongChannelRoutePlanner.GoalWaterwayNodeID);
+
+            var waterwayRoutePlannerResponseTest = new WaterwayRoutePlannerResponse();
+            waterwayRoutePlannerResponseTest.OutputRouteResults(guangDongChannelRoutePlanner2.waterwayRoutePlannerGraph, guangDongChannelRoutePlanner2, guangDongChannelRoutePlanner2.StartWaterwayNodeID, guangDongChannelRoutePlanner2.GoalWaterwayNodeID, 1);
 
             Console.ReadLine();  
         }
