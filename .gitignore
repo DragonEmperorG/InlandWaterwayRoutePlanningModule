@@ -32,3 +32,37 @@ IWRPM/IWRPM/[Ll]og/
 # Visual Studio 2015 cache/options directory
 IWRPM/.vs/
 # Uncomment if you have tasks that create the
+
+
+
+# obj debug
+IWRPM/IWRPMTests/*/obj
+IWRPM/IWRPMTests/*/bin
+IWRPM/IWRPMTests/*/debug
+
+IWRPM/packages
+
+# User-specific files
+IWRPM/IWRPMTests/*.suo
+IWRPM/IWRPMTests/*.user
+IWRPM/IWRPMTests/*.userosscache
+IWRPM/IWRPMTests/*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+IWRPM/IWRPMTests/*.userprefs
+
+# Build results
+IWRPM/IWRPMTests/[Dd]ebug/
+IWRPM/IWRPMTests/[Dd]ebugPublic/
+IWRPM/IWRPMTests/[Rr]elease/
+IWRPM/IWRPMTests/[Rr]eleases/
+IWRPM/IWRPMTests/x64/
+IWRPM/IWRPMTests/x86/
+IWRPM/IWRPMTests/bld/
+IWRPM/IWRPMTests/[Bb]in/
+IWRPM/IWRPMTests/[Oo]bj/
+IWRPM/IWRPMTests/[Ll]og/
+
+# Visual Studio 2015 cache/options directory
+IWRPM/.vs/
+# Uncomment if you have tasks that create the

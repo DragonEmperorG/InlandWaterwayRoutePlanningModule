@@ -18,7 +18,7 @@ namespace IWRPM
     public class WaterwayGraph
     {
         //readonly string _shpfileDatasetsPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Datasets");
-        readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets4";
+        public readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets6";
         //readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\Issue02";
         #region WaterwayGraph Members
 
@@ -63,6 +63,10 @@ namespace IWRPM
             {
                 var waterwayTopoLinkNew = new WaterwayTopoLink();
                 waterwayTopoLinkNew = item.Value;
+                //if (waterwayTopoLinkNew.waterLinkID == "GZGHD-0027-GZGHD-0026")
+                //{
+                //    Console.WriteLine(waterwayTopoLinkNew.waterLinkID);
+                //}
                 m_dicWaterwayLinkNew.Add(waterwayTopoLinkNew.waterLinkID, waterwayTopoLinkNew);
             }
             waterwayNodeSpatialIndexNew = new KDBush<WaterwayTopoNode>(m_dicWaterwayNodeNew.Values.ToArray(), p => p.waterNodeCoordinate[0], p => p.waterNodeCoordinate[1], nodeSize: 10);
@@ -136,6 +140,19 @@ namespace IWRPM
                     }
                 }
                 _countNumRecordWaterwayNodeDatasets += 1;
+
+                //if (waterwayTopoNodeTemp.waterLinkInNumber != waterwayTopoNodeTemp.waterLinkInList.Length)
+                //{
+                //    waterwayTopoNodeTemp.waterLinkInNumber = waterwayTopoNodeTemp.waterLinkInList.Length;
+                //    Console.WriteLine("航道拓扑点 {0} NUMWLI属性填写错误！！！", waterwayTopoNodeTemp.waterNodeID);
+                //}
+
+                //if (waterwayTopoNodeTemp.waterLinkOutNumber != waterwayTopoNodeTemp.waterLinkOutList.Length)
+                //{
+                //    waterwayTopoNodeTemp.waterLinkOutNumber = waterwayTopoNodeTemp.waterLinkOutList.Length;
+                //    Console.WriteLine("航道拓扑点 {0} NUMWLO属性填写错误！！！", waterwayTopoNodeTemp.waterNodeID);
+                //}
+
                 //if (waterwayTopoNodeTemp.waterNodeID == "XJ2DZZ-0037")
                 //{
                 //    Console.WriteLine(waterwayTopoNodeTemp.waterNodeID);
@@ -175,8 +192,9 @@ namespace IWRPM
                     {
                         case "WLIKID":
                             waterwayTopoLinkTemp.waterLinkID = _readerWaterwayLinkDatasets.GetString(i + 1);
-                            //if (waterwayTopoLinkTemp.waterLinkID == "XJ3JKZ-0020-XJ3JKZ-0019")
-                            //    Console.WriteLine(waterwayTopoLinkTemp.waterLinkID);
+                            waterwayTopoLinkTemp.channelGeometry = _readerWaterwayLinkDatasets.Geometry.Coordinates;
+                            if (waterwayTopoLinkTemp.waterLinkID == "GZGHD1-0029")
+                                Console.WriteLine(waterwayTopoLinkTemp.waterLinkID);
                             break;
                         case "UWNCOD":
                             waterwayTopoLinkTemp.upStreamWaterNodeID = _readerWaterwayLinkDatasets.GetString(i + 1);
@@ -289,9 +307,9 @@ namespace IWRPM
                         case "CCEIDL":
                             waterwayTopoLinkTemp.channelConditionsEventIDList = _readerWaterwayLinkDatasets.GetString(i + 1);
                             break;
-                        case "OBJECTID":
-                            waterwayTopoLinkTemp.channelGeometry = _readerWaterwayLinkDatasets.Geometry.Coordinates;
-                            break;
+                        //case "OBJECTID":
+                        //    waterwayTopoLinkTemp.channelGeometry = _readerWaterwayLinkDatasets.Geometry.Coordinates;
+                        //    break;
                     }
                 }
                 _countNumRecordWaterwayLinkDatasets += 1;

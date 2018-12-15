@@ -126,12 +126,19 @@ namespace IWRPM
 
         public double GetDistanceByCoordinate(double[] _startCoordinate, double[] _endCoordinate)
         {
-            var startLongitudeRad = Rad(_startCoordinate[0]);
-            var startLatitudeRad = Rad(_startCoordinate[1]);
-            var endLongitudeRad = Rad(_endCoordinate[0]);
-            var endLatitudeRad = Rad(_endCoordinate[1]);
-            var distance = Math.Acos(Math.Sin(startLatitudeRad) * Math.Sin(endLatitudeRad) + Math.Cos(startLatitudeRad) * Math.Cos(endLatitudeRad) * Math.Cos(startLongitudeRad - endLongitudeRad));
-            distance = distance * EARTH_RADIUS;
+            var distance = 0.0;
+
+            if ((_startCoordinate[0] != _endCoordinate[0]) || (_startCoordinate[1] != _endCoordinate[1]))
+            {
+                var startLongitudeRad = Rad(_startCoordinate[0]);
+                var startLatitudeRad = Rad(_startCoordinate[1]);
+                var endLongitudeRad = Rad(_endCoordinate[0]);
+                var endLatitudeRad = Rad(_endCoordinate[1]);
+                var midVarient = Math.Sin(startLatitudeRad) * Math.Sin(endLatitudeRad) + Math.Cos(startLatitudeRad) * Math.Cos(endLatitudeRad) * Math.Cos(startLongitudeRad - endLongitudeRad);
+                distance = Math.Acos(Math.Min(midVarient, 1.0));
+                distance = distance * EARTH_RADIUS;
+            }
+
             return distance;
         }
 
@@ -339,7 +346,23 @@ namespace IWRPM
                                 if (currentRouteLinkObjectBridgeReference != "")
                                 {
                                     var currentRouteLinkObjectBridgeReferenceCode = currentRouteLinkObjectBridgeReference.Split(',');
-                                    directionFeatureStringTemp.geom = waterwayGraph.m_dicWaterwayNode[currentRouteLinkObjectBridgeReferenceCode[0]].waterNodeCoordinate;
+
+                                    if (!waterwayGraph.m_dicWaterwayNode.ContainsKey(currentRouteLinkObjectBridgeReferenceCode[0]))
+                                    {
+                                        Console.WriteLine("拓扑线 {0} 桥梁点索引填写有误！！！", currentRouteLinkObject.waterLinkID);
+
+                                        var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude = (currentBridgeLinkCoordinateStart[0] + currentBridgeLinkCoordinateEnd[0]) / 2.0;
+                                        var waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude = (currentBridgeLinkCoordinateStart[1] + currentBridgeLinkCoordinateEnd[1]) / 2.0;
+                                        directionFeatureStringTemp.geom[0] = waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLongitude;
+                                        directionFeatureStringTemp.geom[1] = waterwayRoutePlannerResponseDirectionFeatureStringTempGeomLaitude;
+                                    }
+                                    else
+                                    {
+                                        directionFeatureStringTemp.geom = waterwayGraph.m_dicWaterwayNode[currentRouteLinkObjectBridgeReferenceCode[0]].waterNodeCoordinate;
+                                    }
+
+                                    //directionFeatureStringTemp.geom = waterwayGraph.m_dicWaterwayNode[currentRouteLinkObjectBridgeReferenceCode[0]].waterNodeCoordinate;
+
                                 }
                                 else
                                 {
@@ -351,6 +374,7 @@ namespace IWRPM
                                 }
 
                                 directionFeatureStringTemp.length = directionAttributesLengthSum + GetDistanceByCoordinate(currentBridgeLinkCoordinateStart, directionFeatureStringTemp.geom);
+                                directionFeatureStringTemp.bridgeClearanceHeight = currentRouteLinkObject.verticalClearanceHeight;
 
                                 currentSectionStringList.Add(directionFeatureStringTemp);
                                 currentSectionBridgeNameList.Add(currentRouteLinkCoordinatesObjectBridgeName);
@@ -839,6 +863,7 @@ namespace IWRPM
         // 标识该提示点的坐标
         public double[] geom { get; set; } = new double[2];
         public double length { get; set; } = 0.0;
+        public double bridgeClearanceHeight { get; set; } = 0.0;
 
         public WaterwayRoutePlannerResponseDirectionFeatureString()
         {

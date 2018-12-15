@@ -116,8 +116,35 @@ namespace IWRPM
             //var startWaterwayNodeCoordiante = new double[] { 111.504180, 23.363275 };
             //var goalWaterwayNodeCoordiante = new double[] { 111.523878, 23.329163 };
             // Issue12 2018/12/12 14:40
-            var startWaterwayNodeCoordiante = new double[] { 113.087412, 22.219555 };
-            var goalWaterwayNodeCoordiante = new double[] { 113.111542, 22.648221 };
+            //var startWaterwayNodeCoordiante = new double[] { 113.087412, 22.219555 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.111542, 22.648221 };
+            // Issue13 2018/12/12 16:42
+            //var startWaterwayNodeCoordiante = new double[] { 113.579825, 24.575403 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.381028, 22.213704 };
+            // Issue14 2018/12/12 17:12
+            //var startWaterwayNodeCoordiante = new double[] { 113.442556, 22.732028 };
+            //var goalWaterwayNodeCoordiante = new double[] { 111.650472, 23.167339 };
+            // Issue14 2018/12/12 21:06
+            //var startWaterwayNodeCoordiante = new double[] { 112.985556, 23.029942 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.629278, 22.565969 };
+            // Issue16 2018/12/12 21:36
+            //var startWaterwayNodeCoordiante = new double[] { 113.860725, 23.102903 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.601174, 22.918511 };
+            // Issue17 2018/12/12 22:01
+            //var startWaterwayNodeCoordiante = new double[] { 113.221933, 23.112532 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.685985, 22.625759 };
+            // Issue18 2018/12/13 10:28
+            //var startWaterwayNodeCoordiante = new double[] { 111.650472, 23.167339 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.522917, 22.888944 };
+            // Issue19 2018/12/13 11:39
+            //var startWaterwayNodeCoordiante = new double[] { 113.0575, 23.394528 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.210242, 23.157581 };
+            // Issue21 2018/12/13 17:02
+            //var startWaterwayNodeCoordiante = new double[] { 113.264488, 23.117695 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.218694, 23.132639 };
+            // Issue22 2018/12/14 15:13
+            var startWaterwayNodeCoordiante = new double[] { 113.240472, 23.043044 };
+            var goalWaterwayNodeCoordiante = new double[] { 113.264212, 23.117904 };
 
 
             var guangDongChannelRoutePlanner2 = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);

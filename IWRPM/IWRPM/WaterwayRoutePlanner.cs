@@ -36,12 +36,19 @@ namespace IWRPM
 
         public double GetDistanceByCoordinate(double[] _startCoordinate, double[] _endCoordinate)
         {
-            var startLongitudeRad = Rad(_startCoordinate[0]);
-            var startLatitudeRad = Rad(_startCoordinate[1]);
-            var endLongitudeRad = Rad(_endCoordinate[0]);
-            var endLatitudeRad = Rad(_endCoordinate[1]);
-            var distance = Math.Acos(Math.Sin(startLatitudeRad) * Math.Sin(endLatitudeRad) + Math.Cos(startLatitudeRad) * Math.Cos(endLatitudeRad) * Math.Cos(startLongitudeRad - endLongitudeRad));
-            distance = distance * EARTH_RADIUS;
+            var distance = 0.0;
+
+            if ((_startCoordinate[0] != _endCoordinate[0]) || (_startCoordinate[1] != _endCoordinate[1]))
+            {
+                var startLongitudeRad = Rad(_startCoordinate[0]);
+                var startLatitudeRad = Rad(_startCoordinate[1]);
+                var endLongitudeRad = Rad(_endCoordinate[0]);
+                var endLatitudeRad = Rad(_endCoordinate[1]);
+                var midVarient = Math.Sin(startLatitudeRad) * Math.Sin(endLatitudeRad) + Math.Cos(startLatitudeRad) * Math.Cos(endLatitudeRad) * Math.Cos(startLongitudeRad - endLongitudeRad);
+                distance = Math.Acos(Math.Min(midVarient, 1.0));
+                distance = distance * EARTH_RADIUS;
+            }
+
             return distance;
         }
 
@@ -87,7 +94,7 @@ namespace IWRPM
             var _currentCoordinate = _current;
             var _goalCoordinate = _goal;
             var _cosC = Math.Cos(Rad(90.0 - _goalCoordinate[1])) * Math.Cos(Rad(90.0 - _currentCoordinate[1])) + Math.Sin(Rad(90.0 - _goalCoordinate[1])) * Math.Sin(Rad(90.0 - _currentCoordinate[1])) * Math.Cos(Rad(_goalCoordinate[0]) - Rad(_currentCoordinate[0]));
-            var _cRad = Math.Acos(_cosC);
+            var _cRad = Math.Acos(Math.Min(_cosC, 1.0));
             var distance = EARTH_RADIUS * _cRad;
 
             return distance;
@@ -407,6 +414,12 @@ namespace IWRPM
             var insertedShapeLink = candidateShapeLink[0];
             var insertedTopoLink = new WaterwayTopoLink();
             insertedTopoLink = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedShapeLink.affiliatedTopoLinkID];
+
+            var upStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].upStreamWaterNodeID;
+            var downStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].downStreamWaterNodeID;
+            var upStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[upStreamWaterNodeIDTempFix];
+            var downStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[downStreamWaterNodeIDTempFix];
+
             var insertedTopoNodeCoordinate = ShortestInsertedPointToShapeLink(startCoordinate, insertedShapeLink.shapeNodeWithIndex);
             if (IsSameCoordinate(waterwayRoutePlannerGraph.m_dicWaterwayNode[_startWaterwayNodeID].waterNodeCoordinate, insertedTopoNodeCoordinate))
             {
@@ -421,46 +434,85 @@ namespace IWRPM
             insertedWaterwayTopoNode.waterNodeName = "出发点";
 
             var insertedWaterwayTopoLinkUp = new WaterwayTopoLink(insertedTopoLink);
-            insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
-            insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
-            var insertedWaterwayTopoLinkUpChannelLength = 0.0;
-            var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
-            for (var i = 0; i <= insertedShapeLink.shapeNodeWithIndex[0].index; i++)
-            {
-                insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
-                if (i >= 1)
-                {
-                    var coordinateLastTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i - 1].X, insertedWaterwayTopoLinkUpGeometry[i - 1].Y };
-                    var coordinateCurrentTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i].X, insertedWaterwayTopoLinkUpGeometry[i].Y };
-                    insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
-                }
-            }
-            insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
-            var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
-            var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
-            var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
-            insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
-            insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
-            insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
-            waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
-
             var insertedWaterwayTopoLinkDown = new WaterwayTopoLink(insertedTopoLink);
-            insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
-            insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
-            insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
-            var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
-            insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
-            for (var i = insertedShapeLink.shapeNodeWithIndex[1].index; i < insertedTopoLink.channelGeometry.Length; i++)
-            {
-                insertedWaterwayTopoLinkDownGeometry.Add(insertedTopoLink.channelGeometry[i]);
-            }
-            insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
-            waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
 
-            var upStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].upStreamWaterNodeID;
-            var downStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].downStreamWaterNodeID;
-            var upStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[upStreamWaterNodeIDTempFix];
-            var downStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[downStreamWaterNodeIDTempFix];
+            if (IsSameCoordinate(new double[2] { insertedTopoLink.channelGeometry[0].X, insertedTopoLink.channelGeometry[0].Y }, upStreamWaterwayNodeTempFix.waterNodeCoordinate))
+            {                
+                insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                var insertedWaterwayTopoLinkUpChannelLength = 0.0;
+                var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
+                for (var i = 0; i <= insertedShapeLink.shapeNodeWithIndex[0].index; i++)
+                {
+                    insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                    if (i >= 1)
+                    {
+                        var coordinateLastTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i - 1].X, insertedWaterwayTopoLinkUpGeometry[i - 1].Y };
+                        var coordinateCurrentTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i].X, insertedWaterwayTopoLinkUpGeometry[i].Y };
+                        insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
+                    }
+                }
+                insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
+                var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
+                var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
+                insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
+                insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
+                insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
+
+                
+                insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
+                insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
+                var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
+                insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                for (var i = insertedShapeLink.shapeNodeWithIndex[1].index; i < insertedTopoLink.channelGeometry.Length; i++)
+                {
+                    insertedWaterwayTopoLinkDownGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                }
+                insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
+            }
+            else
+            {
+                insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                var insertedWaterwayTopoLinkUpChannelLength = 0.0;
+                var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
+                for (var i = insertedTopoLink.channelGeometry.Length - 1; i >= insertedShapeLink.shapeNodeWithIndex[1].index; i--)
+                {
+                    insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                    if (i <= insertedTopoLink.channelGeometry.Length - 2)
+                    {
+                        var coordinateLastTempC = new double[2] { insertedTopoLink.channelGeometry[i + 1].X, insertedTopoLink.channelGeometry[i + 1].Y };
+                        var coordinateCurrentTempC = new double[2] { insertedTopoLink.channelGeometry[i].X, insertedTopoLink.channelGeometry[i].Y };
+                        insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
+                    }
+                }
+                insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
+                var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
+                var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
+                insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
+                insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
+                insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
+
+
+                insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
+                insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
+                var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
+                insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                for (var i = insertedShapeLink.shapeNodeWithIndex[0].index; i >= 0 ; i--)
+                {
+                    insertedWaterwayTopoLinkDownGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                }
+                insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
+            }
+            
 
             if (!insertedTopoLink.oneWay)
             {
@@ -544,6 +596,11 @@ namespace IWRPM
             var insertedTopoLink = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedShapeLink.affiliatedTopoLinkID];
             var insertedTopoNodeCoordinate = ShortestInsertedPointToShapeLink(goalCoordinate, insertedShapeLink.shapeNodeWithIndex);
 
+            var upStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].upStreamWaterNodeID;
+            var downStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].downStreamWaterNodeID;
+            var upStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[upStreamWaterNodeIDTempFix];
+            var downStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[downStreamWaterNodeIDTempFix];
+
             if (IsSameCoordinate(waterwayRoutePlannerGraph.m_dicWaterwayNode[_goalWaterwayNodeID].waterNodeCoordinate, insertedTopoNodeCoordinate))
             {
                 return _goalWaterwayNodeID;
@@ -558,46 +615,86 @@ namespace IWRPM
             insertedWaterwayTopoNode.waterNodeName = "目标点";
 
             var insertedWaterwayTopoLinkUp = new WaterwayTopoLink(insertedTopoLink);
-            insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
-            insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
-            var insertedWaterwayTopoLinkUpChannelLength = 0.0;
-            var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
-            for (var i = 0; i <= insertedShapeLink.shapeNodeWithIndex[0].index; i++)
-            {
-                insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
-                if (i >= 1)
-                {
-                    var coordinateLastTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i-1].X, insertedWaterwayTopoLinkUpGeometry[i - 1].Y };
-                    var coordinateCurrentTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i].X, insertedWaterwayTopoLinkUpGeometry[i].Y };
-                    insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
-                }
-            }
-            insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
-            var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
-            var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
-            var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
-            insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
-            insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
-            insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
-            waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
-
             var insertedWaterwayTopoLinkDown = new WaterwayTopoLink(insertedTopoLink);
-            insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
-            insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
-            insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
-            var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
-            insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
-            for (var i = insertedShapeLink.shapeNodeWithIndex[1].index; i < insertedTopoLink.channelGeometry.Length; i++)
-            {
-                insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
-            }
-            insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
-            waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
 
-            var upStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].upStreamWaterNodeID;
-            var downStreamWaterNodeIDTempFix = waterwayRoutePlannerGraph.m_dicWaterwayLink[insertedTopoLink.waterLinkID].downStreamWaterNodeID;
-            var upStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[upStreamWaterNodeIDTempFix];
-            var downStreamWaterwayNodeTempFix = waterwayRoutePlannerGraph.m_dicWaterwayNode[downStreamWaterNodeIDTempFix];
+            if (IsSameCoordinate(new double[2] { insertedTopoLink.channelGeometry[0].X, insertedTopoLink.channelGeometry[0].Y }, upStreamWaterwayNodeTempFix.waterNodeCoordinate))
+            {
+                // 处理插入目标点上游拓扑线的属性
+                insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                var insertedWaterwayTopoLinkUpChannelLength = 0.0;
+                var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
+                for (var i = 0; i <= insertedShapeLink.shapeNodeWithIndex[0].index; i++)
+                {
+                    insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                    if (i >= 1)
+                    {
+                        var coordinateLastTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i - 1].X, insertedWaterwayTopoLinkUpGeometry[i - 1].Y };
+                        var coordinateCurrentTempC = new double[2] { insertedWaterwayTopoLinkUpGeometry[i].X, insertedWaterwayTopoLinkUpGeometry[i].Y };
+                        insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
+                    }
+                }
+                insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
+                var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
+                var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
+                insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
+                insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
+                insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
+
+                // 处理插入目标点下游拓扑线的属性
+                insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
+                insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
+                var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
+                insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                for (var i = insertedShapeLink.shapeNodeWithIndex[1].index; i < insertedTopoLink.channelGeometry.Length; i++)
+                {
+                    insertedWaterwayTopoLinkDownGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                }
+                insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
+            }
+            else
+            {
+
+                insertedWaterwayTopoLinkUp.waterLinkID = insertedTopoLink.upStreamWaterNodeID + '-' + insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkUp.downStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                var insertedWaterwayTopoLinkUpChannelLength = 0.0;
+                var insertedWaterwayTopoLinkUpGeometry = new CoordinateList();
+                for (var i = insertedTopoLink.channelGeometry.Length - 1; i >= insertedShapeLink.shapeNodeWithIndex[1].index; i--)
+                {
+                    insertedWaterwayTopoLinkUpGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                    if (i <= insertedTopoLink.channelGeometry.Length - 2)
+                    {
+                        var coordinateLastTempC = new double[2] { insertedTopoLink.channelGeometry[i + 1].X, insertedTopoLink.channelGeometry[i + 1].Y };
+                        var coordinateCurrentTempC = new double[2] { insertedTopoLink.channelGeometry[i].X, insertedTopoLink.channelGeometry[i].Y };
+                        insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTempC, coordinateCurrentTempC);
+                    }
+                }
+                insertedWaterwayTopoLinkUpGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                var insertedWaterwayTopoLinkUpGeometryCount = insertedWaterwayTopoLinkUpGeometry.Count;
+                var coordinateLastTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 2].Y };
+                var coordinateCurrentTemp = new double[2] { insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].X, insertedWaterwayTopoLinkUpGeometry[insertedWaterwayTopoLinkUpGeometryCount - 1].Y };
+                insertedWaterwayTopoLinkUpChannelLength += GreatCircleDistance(coordinateLastTemp, coordinateCurrentTemp);
+                insertedWaterwayTopoLinkUp.channelLength = insertedWaterwayTopoLinkUpChannelLength;
+                insertedWaterwayTopoLinkUp.channelGeometry = insertedWaterwayTopoLinkUpGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkUp.waterLinkID, insertedWaterwayTopoLinkUp);
+
+
+                insertedWaterwayTopoLinkDown.waterLinkID = insertedWaterwayTopoNode.waterNodeID + '-' + insertedTopoLink.downStreamWaterNodeID;
+                insertedWaterwayTopoLinkDown.upStreamWaterNodeID = insertedWaterwayTopoNode.waterNodeID;
+                insertedWaterwayTopoLinkDown.channelLength = insertedTopoLink.channelLength - insertedWaterwayTopoLinkUp.channelLength;
+                var insertedWaterwayTopoLinkDownGeometry = new CoordinateList();
+                insertedWaterwayTopoLinkDownGeometry.Add(new GeoAPI.Geometries.Coordinate(insertedTopoNodeCoordinate[0], insertedTopoNodeCoordinate[1]));
+                for (var i = insertedShapeLink.shapeNodeWithIndex[0].index; i >= 0; i--)
+                {
+                    insertedWaterwayTopoLinkDownGeometry.Add(insertedTopoLink.channelGeometry[i]);
+                }
+                insertedWaterwayTopoLinkDown.channelGeometry = insertedWaterwayTopoLinkDownGeometry.ToArray();
+                waterwayRoutePlannerGraph.m_dicWaterwayLink.Add(insertedWaterwayTopoLinkDown.waterLinkID, insertedWaterwayTopoLinkDown);
+            }            
 
             if (!insertedTopoLink.oneWay)
             {
@@ -782,6 +879,11 @@ namespace IWRPM
                 while (frontier.Count > 0)
                 {
                     var current = frontier.Dequeue();
+
+                    //if (current == "GZGHD-0009")
+                    //{
+                    //    Console.WriteLine(current);
+                    //}
 
                     if (current.Equals(StartGoalWaterwayNodeIDOnNetArray[1]))
                     {
