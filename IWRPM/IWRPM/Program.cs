@@ -143,8 +143,11 @@ namespace IWRPM
             //var startWaterwayNodeCoordiante = new double[] { 113.264488, 23.117695 };
             //var goalWaterwayNodeCoordiante = new double[] { 113.218694, 23.132639 };
             // Issue22 2018/12/14 15:13
-            var startWaterwayNodeCoordiante = new double[] { 113.240472, 23.043044 };
-            var goalWaterwayNodeCoordiante = new double[] { 113.264212, 23.117904 };
+            //var startWaterwayNodeCoordiante = new double[] { 113.240472, 23.043044 };
+            //var goalWaterwayNodeCoordiante = new double[] { 113.264212, 23.117904 };
+            // Issue23 2018/12/17 11:13
+            var startWaterwayNodeCoordiante = new double[] { 113.248172, 23.082275 };
+            var goalWaterwayNodeCoordiante = new double[] { 113.265839, 23.117492 };
 
 
             var guangDongChannelRoutePlanner2 = new WaterwayRoutePlanner(guangDongWaterwayGraph, testPassenger, startWaterwayNodeCoordiante, goalWaterwayNodeCoordiante, 2);

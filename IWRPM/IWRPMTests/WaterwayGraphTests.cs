@@ -238,7 +238,7 @@ namespace IWRPM.Tests
             foreach (var item in waterwayLinkDictionaryTest)
             {
                 var waterwayLinkTemp = item.Value;
-                if (waterwayLinkTemp.waterLinkID == "HTMSD-0017-HTMSD-0013")
+                if (waterwayLinkTemp.waterLinkID == "FLGSD-0001-GZGHD1-0001")
                 {
                     Console.WriteLine(waterwayLinkTemp.waterLinkID);
                 }

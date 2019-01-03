@@ -10,6 +10,7 @@ namespace IWRPM
 {
     /// <summary>
     /// WaterwayRoutePlannerResponse 的摘要说明
+    /// 格式化输出助航使用的数据结构
     /// </summary>
     public class WaterwayRoutePlannerResponse
     {
@@ -29,6 +30,12 @@ namespace IWRPM
         }
 
 
+        /// <summary>
+        /// 空间运算类中已有
+        /// </summary>
+        /// <param name="_traceCoordinate"></param>
+        /// <param name="_comparedCoordinate"></param>
+        /// <returns></returns>
         static bool IsSameCoordinate(double[] _traceCoordinate, double[] _comparedCoordinate)
         {
             bool isSameCoordinate = false;
@@ -49,6 +56,12 @@ namespace IWRPM
             return r * 180.0 / Math.PI;
         }
 
+        /// <summary>
+        /// 根据方位角转换成方位文字
+        /// 建议重构到一个单独的空间运算类中
+        /// </summary>
+        /// <param name="_azimuth"></param>
+        /// <returns></returns>
         static string GetDirection(double _azimuth)
         {
             string direction = "北";
@@ -71,6 +84,13 @@ namespace IWRPM
             return direction;
         }
 
+        /// <summary>
+        /// 解算两点间的方位角
+        /// 建议重构到一个单独的空间运算类中
+        /// </summary>
+        /// <param name="_startCoordinate"></param>
+        /// <param name="_targetCoordinate"></param>
+        /// <returns></returns>
         static double GetAzimuth(double[] _startCoordinate, double[] _targetCoordinate)
         {
             double azimuth = 0.0;
@@ -110,6 +130,14 @@ namespace IWRPM
             return azimuth;
         }
 
+        /// <summary>
+        /// 解算拐点的转向角
+        /// 建议重构到一个单独的空间运算类中
+        /// </summary>
+        /// <param name="_beforeCoordinate"></param>
+        /// <param name="_currentCoordinate"></param>
+        /// <param name="_afterCoordinate"></param>
+        /// <returns></returns>
         static double GetSteeringAngle(double[] _beforeCoordinate, double[] _currentCoordinate, double[] _afterCoordinate)
         {
             double steeringAngle = 0.0;
@@ -124,6 +152,12 @@ namespace IWRPM
             return steeringAngle;
         }
 
+        /// <summary>
+        /// 空间运算类中已有
+        /// </summary>
+        /// <param name="_startCoordinate"></param>
+        /// <param name="_endCoordinate"></param>
+        /// <returns></returns>
         public double GetDistanceByCoordinate(double[] _startCoordinate, double[] _endCoordinate)
         {
             var distance = 0.0;
@@ -142,6 +176,12 @@ namespace IWRPM
             return distance;
         }
 
+
+        /// <summary>
+        /// 转换数据内部的航道名称至语音播报的文字
+        /// </summary>
+        /// <param name="_channelName"></param>
+        /// <returns></returns>
         public string TransformChannelNameVoiceBroadcast(string _channelName)
         {
             var _transformedChannelName = _channelName;
@@ -173,6 +213,16 @@ namespace IWRPM
             return _transformedChannelName;
         }
 
+
+        /// <summary>
+        /// 格式化输出助航依赖的报文
+        /// </summary>
+        /// <param name="waterwayGraph"></param>
+        /// <param name="channelRoutePlanner"></param>
+        /// <param name="start"></param>
+        /// <param name="goal"></param>
+        /// <param name="averageSpeed"></param>
+        /// <returns></returns>
         public WaterwayRoutePlannerResponse OutputRouteResults(WaterwayGraph waterwayGraph, WaterwayRoutePlanner channelRoutePlanner, string start, string goal, double averageSpeed)
         {
             if (channelRoutePlanner.isFindOptimalRoute)
@@ -186,8 +236,11 @@ namespace IWRPM
                 var goalCoordinate = waterwayGraph.m_dicWaterwayNode[goal].waterNodeCoordinate;
 
                 var currentResearchElement = goal;
+                // 处理起终点为同一点（过近）的情况
                 if (channelRoutePlanner.cameFrom[currentResearchElement][1] != "START")
                 {
+                    // 将航线规划的结果顺次压入堆栈中
+                    // 并统计总体的相关指标
                     do
                     {
                         routeResultsStack.Push(currentResearchElement);
@@ -303,12 +356,12 @@ namespace IWRPM
                         var currentRouteLinkResult = routeResultsStack.Pop();
 
 
-                        //if (currentRouteLinkResult == "DPSD2XNZ-9001-XJ2DZZ-0010")
-                        //{
-                        //    Console.WriteLine(currentRouteLinkResult);
-                        //}
+                        if (currentRouteLinkResult == "GZGHD1-9001-GZGHD2-0019")
+                        {
+                            Console.WriteLine(currentRouteLinkResult);
+                        }
 
-
+                        // 统计并记录该段拓扑线对应输出结果的要素
                         var currentRouteLinkObject = waterwayGraph.m_dicWaterwayLink[currentRouteLinkResult];
                         var currentRouteLinkCoordinatesObject = currentRouteLinkObject.channelGeometry;
                         var currentRouteLinkCoordinatesObjectLength = currentRouteLinkCoordinatesObject.Length;
@@ -473,6 +526,8 @@ namespace IWRPM
                         directionAttributesLengthSum += waterwayGraph.m_dicWaterwayLink[currentRouteLinkResult].channelLength;
 
                         var currentRouteNodeResult = routeResultsStack.Pop();
+
+                        // 当遇到航道分叉口时将结果集分段
                         if (waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult].waterNodeType == 2 || waterwayGraph.m_dicWaterwayNode[currentRouteNodeResult].waterNodeID == goal)
                         {
                             var lastDirectionTraceWaterwayNode = waterwayGraph.m_dicWaterwayNode[lastDirectionTraceNodeID];
@@ -664,6 +719,7 @@ namespace IWRPM
                     //waterwayRoutePlannerResponse.directions.Add(waterwayRoutePlannerResponseDirectionAlternative);
                     waterwayRoutePlannerResponse.routes = waterwayRoutePlannerResponseRoutes;
                 }
+                // 当起终点为同一点时输出结果的处理
                 else
                 {
                     WaterwayRoutePlannerResponseDirectionFeature waterwayRoutePlannerResponseDirectionFeatureStop = new WaterwayRoutePlannerResponseDirectionFeature();
@@ -696,6 +752,7 @@ namespace IWRPM
 
                 return waterwayRoutePlannerResponse;
             }
+            // 没有规划出航线的结果处理
             else
             {
                 WaterwayRoutePlannerResponse waterwayRoutePlannerResponse = new WaterwayRoutePlannerResponse();
@@ -708,6 +765,7 @@ namespace IWRPM
         }
     }
 
+    // 以下的类均为构建格式化输出结果所构造的，安卓那边应该有对应写好结构的类可复用
     public class WaterwayRoutePlannerResponseRoutes
     {
         public WaterwayRoutePlannerResponseRoutesFieldAliases fieldAliases { get; set; } = new WaterwayRoutePlannerResponseRoutesFieldAliases();

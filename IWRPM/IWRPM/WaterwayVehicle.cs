@@ -7,14 +7,25 @@ using System.Threading.Tasks;
 
 namespace IWRPM
 {
+    /// <summary>
+    /// 定义通航船舶对象
+    /// 基础数据结构
+    /// </summary>
     public class WaterwayVehicle
     {
+        //船舶标识
         public string vehicleID;
+        //船舶载重吨位
         public float deadWeightTonnage;
+        //总长
         public float lengthOverall;
+        //型宽
         public float mouldedBreadth;
+        //型深
         public float mouldedDepth;
+        //满载吃水
         public float loadedDraft;
+        //空载水面线以上高度
         public float freeboardHeight;
 
         public WaterwayVehicle()

@@ -14,17 +14,30 @@ namespace IWRPM
 {
     /// <summary>
     /// WaterwayGraph 的摘要说明
+    /// 航道拓扑网对象
+    /// 负责存储从ShapeFile中读取到的所有的信息
+    /// LoadWaterwayNetworkDatasets()
+    /// |
+    /// LoadWaterwayNodeDatasets()
+    /// |
+    /// LoadWaterwayLinkDatasets()
+    /// |
+    /// ConstructSpatialIndex()
     /// </summary>
     public class WaterwayGraph
     {
         //readonly string _shpfileDatasetsPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Datasets");
-        public readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\WaterwayNetworkDatasets6";
+        public readonly string _shpfileDatasetsPath = "C:\\iis\\Datasets\\DatasetsUesdForTest\\WaterwayNetworkDatasets20181218";
         //readonly string _shpfileDatasetsPath = "D:\\GuangDongENCProject\\Datasets\\Issue02";
         #region WaterwayGraph Members
-
+        
+        // 标识航道拓扑网数据是否加载
         public bool isWaterwayNetworkDatasetsLoaded { get; set; } = false;
+        // 存储航道拓扑点的字典
         public Dictionary<string, WaterwayTopoNode> m_dicWaterwayNode = new Dictionary<string, WaterwayTopoNode>();
+        // 存储航道拓扑线的字典
         public Dictionary<string, WaterwayTopoLink> m_dicWaterwayLink = new Dictionary<string, WaterwayTopoLink>();
+        // 存储航道拓扑点的空间索引
         public KDBush<WaterwayTopoNode> waterwayNodeSpatialIndex;
 
         #endregion
@@ -44,6 +57,12 @@ namespace IWRPM
             this.waterwayNodeSpatialIndex = _waterwayGraph.waterwayNodeSpatialIndex;
         }
 
+
+        /// <summary>
+        /// 自定义的航道拓扑网深拷贝的方法
+        /// </summary>
+        /// <param name="_waterwayGraph"></param>
+        /// <returns></returns>
         public static WaterwayGraph ConstructNewInstanceFromExistClass(WaterwayGraph _waterwayGraph)
         {
             var waterwayGraphNew = new WaterwayGraph();
@@ -81,6 +100,7 @@ namespace IWRPM
 
         /// <summary>
         /// Load WaterwayNode Datasets
+        /// 加载航道拓扑点ShapeFile数据的方法
         /// </summary>
         /// <param name="_shpfileWaterwayNodeDatasetsPath"></param>
         /// <returns></returns>
@@ -160,13 +180,14 @@ namespace IWRPM
                 _dicWaterwayNode.Add(waterwayTopoNodeTemp.waterNodeID, waterwayTopoNodeTemp);
                 Console.WriteLine("{0} WaterwayNode has been loaded({1}/{2})!", waterwayTopoNodeTemp.waterNodeID, _countNumRecordWaterwayNodeDatasets, _numRecordsWaterwayNodeDatasets);
             }
-
+            _readerWaterwayNodeDatasets.Close();
             return _dicWaterwayNode;
         }
 
 
         /// <summary>
         /// Load WaterwayLink Dataset
+        /// 加载航道拓扑线ShapeFile数据的方法
         /// </summary>
         /// <param name="_shpfileWaterwayLinkDatasetsPath"></param>
         /// <returns></returns>
@@ -317,14 +338,26 @@ namespace IWRPM
                 Console.WriteLine("{0} WaterwayLink has been loaded({1}/{2})!", waterwayTopoLinkTemp.waterLinkID, _countNumRecordWaterwayLinkDatasets, _numRecordsWaterwayLinkDatasets);
             }
 
+            _readerWaterwayLinkDatasets.Close();
             return _dicWaterwayLink;
         }
 
+        /// <summary>
+        /// 构造航道拓扑点的空间索引
+        /// </summary>
+        /// <param name="_dicWaterwayNode"></param>
+        /// <returns></returns>
         KDBush<WaterwayTopoNode> ConstructSpatialIndex(Dictionary<string, WaterwayTopoNode> _dicWaterwayNode)
         {
             return new KDBush<WaterwayTopoNode>(_dicWaterwayNode.Values.ToArray(), p => p.waterNodeCoordinate[0], p => p.waterNodeCoordinate[1], nodeSize: 10);
         }
 
+        /// <summary>
+        /// 在航线规划用用于判定船舶是否能穿过该段航道
+        /// </summary>
+        /// <param name="passingThroughWaterwayLinkID"></param>
+        /// <param name="passingThroughVehicle"></param>
+        /// <returns></returns>
         bool EstimatePassingThroughChannel(string passingThroughWaterwayLinkID, WaterwayVehicle passingThroughVehicle)
         {
             bool IsPassingThroughChannel = true;
@@ -345,8 +378,10 @@ namespace IWRPM
 
         /// <summary>
         /// Get WaterwayNeighborNodeIDs
+        /// 用于距离优先的航线规划，对于给定船只，用于获取从当前节点所能通行邻接的所有其他节点
         /// </summary>
         /// <param name="currentWaterwayNodeID"></param>
+        /// <param name="currentVehicle"></param>
         /// <returns></returns>
         public IEnumerable<WaterwayNeighbor> Neighbors(string currentWaterwayNodeID, WaterwayVehicle currentVehicle)
         {
@@ -368,6 +403,7 @@ namespace IWRPM
 
         /// <summary>
         /// Get WaterwayNeighborNodeIDs
+        /// 该方法弃用了
         /// </summary>
         /// <param name="currentWaterwayNodeID"></param>
         /// <returns></returns>
@@ -382,7 +418,13 @@ namespace IWRPM
             return currentWaterwayLinkConnectIDLists;
         }
 
-
+        /// <summary>
+        /// 用于综合考虑的航线规划，对于给定船只，用于获取从当前节点所能通行邻接的所有其他节点
+        /// </summary>
+        /// <param name="currentWaterwayNodeID"></param>
+        /// <param name="currentVehicle"></param>
+        /// <param name="method"></param>
+        /// <returns></returns>
         public IEnumerable<WaterwayNeighbor> Neighbors(string currentWaterwayNodeID, WaterwayVehicle currentVehicle, int method)
         {
             if (method == 2)
@@ -409,6 +451,7 @@ namespace IWRPM
 
         /// <summary>
         /// Load WaterwayNetwork Datasets
+        /// 整合的航道拓扑网络数据加载方法
         /// </summary>
         public void LoadWaterwayNetworkDatasets()
         {
